@@ -120,7 +120,7 @@ public class WorkspaceManagerTest {
         EnvironmentContext.setCurrent(new EnvironmentContext() {
             @Override
             public Subject getSubject() {
-                return new SubjectImpl("Test User", USER_ID, "token", new ArrayList<>(), false);
+                return new SubjectImpl("Test User", USER_ID, "token", false);
             }
         });
     }
