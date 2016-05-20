@@ -82,5 +82,12 @@ public interface MachineConfigDto extends MachineConfig, Hyperlinks {
     MachineConfigDto withEnvVariables(Map<String, String> envVariables);
 
     @Override
+    List<String> getMachineLinks();
+
+    void setMachineLinks(List<String> machineLinks);
+
+    MachineConfigDto withMachineLinks(List<String> machineLinks);
+
+    @Override
     MachineConfigDto withLinks(List<Link> links);
 }

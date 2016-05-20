@@ -29,9 +29,7 @@ public class MachineSourceImpl implements MachineSource {
     private String location;
     private String content;
 
-    protected MachineSourceImpl() {
-
-    }
+    protected MachineSourceImpl() {}
 
     /**
      * Please use {@link MachineSourceImpl with type and then setLocation or setContent}

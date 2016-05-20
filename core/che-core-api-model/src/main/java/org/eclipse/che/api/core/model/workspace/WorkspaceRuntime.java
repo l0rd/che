@@ -40,6 +40,8 @@ public interface WorkspaceRuntime {
      */
     String getActiveEnv();
 
+    String getEnvType();
+
     /**
      * Returns a workspace root folder.
      * The base folder for the workspace projects.

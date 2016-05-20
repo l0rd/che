@@ -18,10 +18,12 @@ import java.util.Objects;
  * @author Alexander Garagatyi
  */
 public class ServerConfImpl implements ServerConf {
-    private final String ref;
-    private final String port;
-    private final String protocol;
-    private final String path;
+    private String ref;
+    private String port;
+    private String protocol;
+    private String path;
+
+    public ServerConfImpl() {}
 
     public ServerConfImpl(String ref, String port, String protocol, String path) {
         this.ref = ref;
@@ -42,9 +44,17 @@ public class ServerConfImpl implements ServerConf {
         return ref;
     }
 
+    public void setRef(String ref) {
+        this.ref = ref;
+    }
+
     @Override
     public String getPort() {
         return port;
+    }
+
+    public void setPort(String port) {
+        this.port = port;
     }
 
     @Override
@@ -52,9 +62,17 @@ public class ServerConfImpl implements ServerConf {
         return protocol;
     }
 
+    public void setProtocol(String protocol) {
+        this.protocol = protocol;
+    }
+
     @Override
     public String getPath() {
         return path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
     }
 
     @Override

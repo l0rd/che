@@ -34,6 +34,10 @@ public class EnvironmentImpl implements Environment {
     private RecipeImpl              recipe;
     private List<MachineConfigImpl> machineConfigs;
 
+    private String type;
+    private String config;
+
+    @Deprecated
     public EnvironmentImpl(String name, Recipe recipe, List<? extends MachineConfig> machineConfigs) {
         this.name = name;
         if (recipe != null) {
@@ -46,8 +50,32 @@ public class EnvironmentImpl implements Environment {
         }
     }
 
+    public EnvironmentImpl(String name, String type, String config) {
+        this.name = name;
+        this.type = type;
+        this.config = config;
+    }
+
+    private EnvironmentImpl(String name, Recipe recipe, List<? extends MachineConfig> machineConfigs, String type, String config) {
+        this.name = name;
+        this.type = type;
+        this.config = config;
+        if (recipe != null) {
+            this.recipe = new RecipeImpl(recipe);
+        }
+        if (machineConfigs != null) {
+            this.machineConfigs = machineConfigs.stream()
+                                                .map(MachineConfigImpl::new)
+                                                .collect(toList());
+        }
+    }
+
     public EnvironmentImpl(Environment environment) {
-        this(environment.getName(), environment.getRecipe(), environment.getMachineConfigs());
+        this(environment.getName(),
+             environment.getRecipe(),
+             environment.getMachineConfigs(),
+             environment.getType(),
+             environment.getConfig());
     }
 
     @Override
@@ -70,22 +98,34 @@ public class EnvironmentImpl implements Environment {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof EnvironmentImpl)) return false;
-        final EnvironmentImpl other = (EnvironmentImpl)obj;
-        return Objects.equals(name, other.name) &&
-               Objects.equals(recipe, other.recipe) &&
-               getMachineConfigs().equals(other.getMachineConfigs());
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    @Override
+    public String getConfig() {
+        return config;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof EnvironmentImpl)) return false;
+        EnvironmentImpl that = (EnvironmentImpl)o;
+        return Objects.equals(name, that.name) &&
+               Objects.equals(recipe, that.recipe) &&
+               Objects.equals(machineConfigs, that.machineConfigs) &&
+               Objects.equals(type, that.type) &&
+               Objects.equals(config, that.config);
     }
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = hash * 31 + Objects.hashCode(name);
-        hash = hash * 31 + Objects.hashCode(recipe);
-        hash = hash * 31 + getMachineConfigs().hashCode();
-        return hash;
+        return Objects.hash(name, recipe, machineConfigs, type, config);
     }
 
     @Override
@@ -94,6 +134,8 @@ public class EnvironmentImpl implements Environment {
                "name='" + name + '\'' +
                ", recipe=" + recipe +
                ", machineConfigs=" + machineConfigs +
+               ", type='" + type + '\'' +
+               ", config='" + config + '\'' +
                '}';
     }
 }

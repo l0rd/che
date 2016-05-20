@@ -12,47 +12,44 @@ package org.eclipse.che.api.workspace.server;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.Striped;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
-import org.eclipse.che.api.core.BadRequestException;
 import org.eclipse.che.api.core.ConflictException;
 import org.eclipse.che.api.core.NotFoundException;
 import org.eclipse.che.api.core.ServerException;
 import org.eclipse.che.api.core.model.machine.Machine;
-import org.eclipse.che.api.core.model.machine.MachineConfig;
-import org.eclipse.che.api.core.model.machine.MachineStatus;
+import org.eclipse.che.api.core.model.workspace.Environment;
 import org.eclipse.che.api.core.model.workspace.WorkspaceRuntime;
 import org.eclipse.che.api.core.model.workspace.WorkspaceStatus;
 import org.eclipse.che.api.core.notification.EventService;
 import org.eclipse.che.api.core.notification.EventSubscriber;
-import org.eclipse.che.api.machine.server.MachineManager;
-import org.eclipse.che.api.machine.server.exception.MachineException;
-import org.eclipse.che.api.machine.server.model.impl.MachineConfigImpl;
 import org.eclipse.che.api.machine.server.model.impl.MachineImpl;
 import org.eclipse.che.api.machine.shared.dto.event.MachineStatusEvent;
+import org.eclipse.che.api.workspace.server.env.spi.EnvironmentEngine;
 import org.eclipse.che.api.workspace.server.model.impl.EnvironmentImpl;
 import org.eclipse.che.api.workspace.server.model.impl.WorkspaceImpl;
 import org.eclipse.che.api.workspace.server.model.impl.WorkspaceRuntimeImpl;
 import org.eclipse.che.api.workspace.shared.dto.event.WorkspaceStatusEvent;
 import org.eclipse.che.api.workspace.shared.dto.event.WorkspaceStatusEvent.EventType;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.ArrayDeque;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static org.eclipse.che.dto.server.DtoFactory.newDto;
+import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Defines an internal API for managing {@link WorkspaceRuntimeImpl} instances.
@@ -76,29 +73,25 @@ import static org.eclipse.che.dto.server.DtoFactory.newDto;
  */
 @Singleton
 public class WorkspaceRuntimes {
-
-    private static final Logger                 LOG     = LoggerFactory.getLogger(WorkspaceRuntimes.class);
+    private static final Logger                 LOG     = getLogger(WorkspaceRuntimes.class);
     // 16 - experimental value for stripes count, it comes from default hash map size
     private static final Striped<ReadWriteLock> STRIPED = Striped.readWriteLock(16);
 
     @VisibleForTesting
-    final Map<String, RuntimeDescriptor>        descriptors;
+    final         Map<String, RuntimeDescriptor>      descriptors;
     @VisibleForTesting
-    final Map<String, Queue<MachineConfigImpl>> startQueues;
-
-    private final MachineManager                      machineManager;
     private final EventService                        eventService;
     private final EventSubscriber<MachineStatusEvent> addMachineEventSubscriber;
     private final EventSubscriber<MachineStatusEvent> removeMachineEventSubscriber;
+    private final Map<String, EnvironmentEngine>      envEngines;
 
     private volatile boolean isPreDestroyInvoked;
 
     @Inject
-    public WorkspaceRuntimes(MachineManager machineManager, EventService eventService) {
-        this.machineManager = machineManager;
+    public WorkspaceRuntimes(EventService eventService, Map<String, EnvironmentEngine> envEngines) {
         this.eventService = eventService;
+        this.envEngines = envEngines;
         this.descriptors = new HashMap<>();
-        this.startQueues = new HashMap<>();
         this.addMachineEventSubscriber = new AddMachineEventSubscriber();
         this.removeMachineEventSubscriber = new RemoveMachineEventSubscriber();
     }
@@ -136,17 +129,8 @@ public class WorkspaceRuntimes {
      * Starts all machines from specified workspace environment,
      * creates workspace runtime instance based on that environment.
      *
-     * <p>Dev-machine always starts before the other machines.
-     * If dev-machine start failed then method will throw appropriate
-     * {@link ServerException}. During the start of the workspace its
+     * <p>During the start of the workspace its
      * runtime is visible with {@link WorkspaceStatus#STARTING} status.
-     *
-     * <p>If {@link #stop} method executed after dev machine is started but
-     * another machines haven't been started yet then {@link ConflictException}
-     * will be thrown and start process will be interrupted.
-     *
-     * <p>Note that it doesn't provide any events for
-     * machines start, Machine API is responsible for it.
      *
      * @param workspace
      *         workspace which environment should be started
@@ -164,7 +148,7 @@ public class WorkspaceRuntimes {
      * @throws ServerException
      *         when component {@link #isPreDestroyInvoked is stopped} or any
      *         other error occurs during environment start
-     * @see MachineManager#createMachineSync(MachineConfig, String, String)
+     * @see EnvironmentEngine#start(String, Environment, boolean)
      * @see WorkspaceStatus#STARTING
      * @see WorkspaceStatus#RUNNING
      */
@@ -173,10 +157,11 @@ public class WorkspaceRuntimes {
                                    boolean recover) throws ServerException,
                                                            ConflictException,
                                                            NotFoundException {
+        String workspaceId = workspace.getId();
         final Optional<EnvironmentImpl> environmentOpt = workspace.getConfig().getEnvironment(envName);
         if (!environmentOpt.isPresent()) {
             throw new IllegalArgumentException(format("Workspace '%s' doesn't contain environment '%s'",
-                                                      workspace.getId(),
+                                                      workspaceId,
                                                       envName));
         }
 
@@ -184,15 +169,24 @@ public class WorkspaceRuntimes {
         // in this way machine configs also copied from incoming values
         // which means that original values won't affect the values in starting queue
         final EnvironmentImpl environmentCopy = new EnvironmentImpl(environmentOpt.get());
+        // todo update all existing environments with type 'che'
+        if (environmentCopy.getType() == null) {
+            environmentCopy.setType("che");
+        }
+
+        EnvironmentEngine engine = envEngines.get(environmentCopy.getType());
+        if (engine == null) {
+            throw new NotFoundException("Environment engine of type '" + environmentCopy.getType() + "' is not found");
+        }
 
         // This check allows to exit with an appropriate exception before blocking on lock.
         // The double check is required as it is still possible to get unlucky timing
         // between locking and starting workspace.
         ensurePreDestroyIsNotExecuted();
-        acquireWriteLock(workspace.getId());
+        acquireWriteLock(workspaceId);
         try {
             ensurePreDestroyIsNotExecuted();
-            final RuntimeDescriptor existingDescriptor = descriptors.get(workspace.getId());
+            final RuntimeDescriptor existingDescriptor = descriptors.get(workspaceId);
             if (existingDescriptor != null) {
                 throw new ConflictException(format("Could not start workspace '%s' because its status is '%s'",
                                                    workspace.getConfig().getName(),
@@ -200,22 +194,51 @@ public class WorkspaceRuntimes {
             }
 
             // Create a new runtime descriptor and save it with 'STARTING' status
-            final RuntimeDescriptor descriptor = new RuntimeDescriptor(new WorkspaceRuntimeImpl(envName));
+            final RuntimeDescriptor descriptor = new RuntimeDescriptor(new WorkspaceRuntimeImpl(envName, environmentCopy.getType()));
             descriptor.setRuntimeStatus(WorkspaceStatus.STARTING);
-            descriptors.put(workspace.getId(), descriptor);
-
-            // Create a new start queue with a dev machine in the queue head
-            final List<MachineConfigImpl> startConfigs = environmentCopy.getMachineConfigs();
-            final MachineConfigImpl devCfg = removeFirstMatching(startConfigs, MachineConfig::isDev);
-            startConfigs.add(0, devCfg);
-            startQueues.put(workspace.getId(), new ArrayDeque<>(startConfigs));
+            descriptors.put(workspaceId, descriptor);
         } finally {
-            releaseWriteLock(workspace.getId());
+            releaseWriteLock(workspaceId);
         }
 
-        startQueue(workspace.getId(), environmentCopy.getName(), recover);
+        // todo should we declare that environment should start dev machine or not?
+        ensurePreDestroyIsNotExecuted();
+        publishEvent(EventType.STARTING, workspaceId, null);
+        List<Machine> machines = engine.start(workspaceId, environmentCopy, recover);
+        List<MachineImpl> machinesImpls = machines.stream()
+                                                  .map(MachineImpl::new)
+                                                  .collect(Collectors.toList());
+        Optional<MachineImpl> devMachineOpt = machinesImpls.stream()
+                                                           .filter(machine -> machine.getConfig().isDev())
+                                                           .findAny();
+        if (!devMachineOpt.isPresent()) {
+            publishEvent(EventType.ERROR,
+                         workspaceId,
+                         "Environment " + envName + " has booted but it doesn't contain dev machine. Environment has been stopped.");
+            try {
+                engine.stop(workspaceId);
+            } catch (Exception e) {
+                LOG.error(e.getLocalizedMessage(), e);
+            }
+            throw new ServerException("Environment " + envName +
+                                      " has booted but it doesn't contain dev machine. Environment has been stopped.");
+        } else {
+            acquireWriteLock(workspaceId);
+            try {
+                RuntimeDescriptor descriptor = descriptors.get(workspaceId);
+                WorkspaceRuntimeImpl runtime = descriptor.getRuntime();
 
-        return get(workspace.getId());
+                descriptor.setRuntimeStatus(WorkspaceStatus.RUNNING);
+                runtime.setMachines(machinesImpls);
+                runtime.setDevMachine(devMachineOpt.get());
+            } finally {
+                releaseWriteLock(workspaceId);
+            }
+            // Event publication should be performed outside of the lock
+            // as it may take some time to notify subscribers
+            publishEvent(EventType.RUNNING, workspaceId, null);
+            return get(workspaceId);
+        }
     }
 
     /**
@@ -231,17 +254,9 @@ public class WorkspaceRuntimes {
     /**
      * Stops running workspace runtime.
      *
-     * <p>Stops all running machines one by one,
-     * non-dev machines first. During the stop of the workspace
-     * its runtime is accessible with {@link WorkspaceStatus#STOPPING stopping} status.
+     * <p>Stops environment in an implementation specific way.
+     * During the stop of the workspace its runtime is accessible with {@link WorkspaceStatus#STOPPING stopping} status.
      * Workspace may be stopped only if its status is {@link WorkspaceStatus#RUNNING}.
-     *
-     * <p>If workspace has runtime with dev-machine running
-     * and other machines starting then the runtime can still
-     * be stopped which will also interrupt starting process.
-     *
-     * <p>Note that it doesn't provide any events for machines stop,
-     * Machine API is responsible for it.
      *
      * @param workspaceId
      *         identifier of workspace which should be stopped
@@ -251,7 +266,7 @@ public class WorkspaceRuntimes {
      *         when any error occurs during workspace stopping
      * @throws ConflictException
      *         when running workspace status is different from {@link WorkspaceStatus#RUNNING}
-     * @see MachineManager#destroy(String, boolean)
+     * @see EnvironmentEngine#stop(String)
      * @see WorkspaceStatus#STOPPING
      */
     public void stop(String workspaceId) throws NotFoundException, ServerException, ConflictException {
@@ -278,20 +293,30 @@ public class WorkspaceRuntimes {
             // must visible with STOPPING status until dev-machine is not stopped
             descriptor.setRuntimeStatus(WorkspaceStatus.STOPPING);
 
-            // At this point of time starting queue must be removed
-            // to prevent start of another machines which are not started yet.
-            // In this case workspace start will be interrupted and
-            // interruption will be reported, machine which is currently starting(if such exists)
-            // will be destroyed by workspace starting thread.
-            startQueues.remove(workspaceId);
-
             // Create deep  copy of the currently running workspace to prevent
             // out of the lock instance modifications and stale data effects
             runtime = new WorkspaceRuntimeImpl(descriptor.getRuntime());
         } finally {
             releaseWriteLock(workspaceId);
         }
-        destroyRuntime(workspaceId, runtime);
+
+        EnvironmentEngine engine = envEngines.get(runtime.getEnvType());
+        if (engine == null) {
+            // should never happen
+            throw new ServerException(String.format("Can't stop workspace %s. Engine of type %s not found",
+                                                    workspaceId,
+                                                    runtime.getEnvType()));
+        }
+
+        publishEvent(EventType.STOPPING, workspaceId, null);
+        try {
+            engine.stop(workspaceId);
+            publishEvent(EventType.STOPPED, workspaceId, null);
+        } catch (NotFoundException | ServerException | RuntimeException e) {
+            publishEvent(EventType.ERROR, workspaceId, e.getLocalizedMessage());
+        } finally {
+            removeRuntime(workspaceId);
+        }
     }
 
     /**
@@ -337,7 +362,7 @@ public class WorkspaceRuntimes {
 
     /**
      * Removes all descriptors from the in-memory storage, while
-     * {@link MachineManager#cleanup()} is responsible for machines destroying.
+     * {@link EnvironmentEngine} is responsible for environment destroying.
      */
     @PreDestroy
     @VisibleForTesting
@@ -348,18 +373,49 @@ public class WorkspaceRuntimes {
         eventService.unsubscribe(addMachineEventSubscriber);
         eventService.unsubscribe(removeMachineEventSubscriber);
 
+        final ExecutorService stopEnvExecutor =
+                Executors.newFixedThreadPool(2 * Runtime.getRuntime().availableProcessors(),
+                                             new ThreadFactoryBuilder().setNameFormat("StopEnvironment-%d")
+                                                                       .setDaemon(false)
+                                                                       .build());
         // Acquire all the locks
         for (int i = 0; i < STRIPED.size(); i++) {
             STRIPED.getAt(i).writeLock().lock();
         }
+        try {
+            for (Map.Entry<String, RuntimeDescriptor> descriptorEntry : descriptors.entrySet()) {
+                if (descriptorEntry.getValue().getRuntimeStatus().equals(WorkspaceStatus.RUNNING) ||
+                    descriptorEntry.getValue().getRuntimeStatus().equals(WorkspaceStatus.STARTING)) {
+                    stopEnvExecutor.execute(() -> {
+                        try {
+                            envEngines.get(descriptorEntry.getValue().getRuntime().getEnvType()).stop(descriptorEntry.getKey());
+                        } catch (NotFoundException ignore) {
+                        } catch (ServerException e) {
+                            LOG.error(e.getLocalizedMessage(), e);
+                        }
+                    });
+                }
+            }
 
-        // clean up
-        descriptors.clear();
-        startQueues.clear();
+            descriptors.clear();
 
-        // Release all the locks
-        for (int i = 0; i < STRIPED.size(); i++) {
-            STRIPED.getAt(i).writeLock().unlock();
+            stopEnvExecutor.shutdown();
+        } finally {
+            // Release all the locks
+            for (int i = 0; i < STRIPED.size(); i++) {
+                STRIPED.getAt(i).writeLock().unlock();
+            }
+            try {
+                if (!stopEnvExecutor.awaitTermination(50, TimeUnit.SECONDS)) {
+                    stopEnvExecutor.shutdownNow();
+                    if (!stopEnvExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
+                        LOG.warn("Unable terminate destroy machines pool");
+                    }
+                }
+            } catch (InterruptedException e) {
+                stopEnvExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
@@ -376,7 +432,6 @@ public class WorkspaceRuntimes {
         acquireWriteLock(workspaceId);
         try {
             descriptors.remove(workspaceId);
-            startQueues.remove(workspaceId);
         } finally {
             releaseWriteLock(workspaceId);
         }
@@ -391,227 +446,10 @@ public class WorkspaceRuntimes {
         }
     }
 
-    /**
-     * Stops workspace by destroying all its machines and removing it from the in memory storage.
-     */
-    private void destroyRuntime(String workspaceId,
-                                WorkspaceRuntimeImpl workspace) throws NotFoundException, ServerException {
-        publishEvent(EventType.STOPPING, workspaceId, null);
-
-        // Preparing the list of machines to be destroyed, dev machine goes last
-        final List<MachineImpl> machines = workspace.getMachines();
-        final MachineImpl devMachine = removeFirstMatching(machines, m -> m.getConfig().isDev());
-
-        // Synchronously destroying all non-dev machines
-        for (MachineImpl machine : machines) {
-            try {
-                machineManager.destroy(machine.getId(), false);
-            } catch (NotFoundException ignore) {
-                // This may happen, if machine is stopped by direct call to the Machine API
-                // MachineManager cleanups all the machines due to application server shutdown
-                // As non-dev machines don't affect runtime status, this exception is ignored
-            } catch (RuntimeException | MachineException ex) {
-                LOG.error(format("Could not destroy machine '%s' of workspace '%s'",
-                                 machine.getId(),
-                                 machine.getWorkspaceId()),
-                          ex);
-            }
+    private void ensurePreDestroyIsNotExecuted() throws ServerException {
+        if (isPreDestroyInvoked) {
+            throw new ServerException("Could not perform operation because application server is stopping");
         }
-
-        // Synchronously destroying dev-machine
-        try {
-            machineManager.destroy(devMachine.getId(), false);
-            publishEvent(EventType.STOPPED, workspaceId, null);
-        } catch (NotFoundException ignore) {
-            // This may happen, if machine is stopped by direct call to the Machine API
-            // MachineManager cleanups all the machines due to application server shutdown
-            // In this case workspace is considered as successfully stopped
-            publishEvent(EventType.STOPPED, workspaceId, null);
-        } catch (RuntimeException | ServerException ex) {
-            publishEvent(EventType.ERROR, workspaceId, ex.getLocalizedMessage());
-            throw ex;
-        } finally {
-            removeRuntime(workspaceId);
-        }
-    }
-
-    private void startQueue(String workspaceId,
-                            String envName,
-                            boolean recover) throws ServerException,
-                                                    NotFoundException,
-                                                    ConflictException {
-        publishEvent(EventType.STARTING, workspaceId, null);
-
-        // Starting all the machines one by one by getting configs
-        // from the corresponding starting queue.
-        // Config will be null only if there are no machines left in the queue
-        MachineConfigImpl config = queuePeekOrFail(workspaceId);
-        while (config != null) {
-
-            // According to WorkspaceStatus specification the workspace start
-            // is failed when dev-machine start is failed, so if any error
-            // occurs during machine creation and the machine is dev-machine
-            // then start fail is reported and start resources such as queue
-            // and descriptor must be cleaned up
-            MachineImpl machine = null;
-            try {
-                machine = startMachine(config, workspaceId, envName, recover);
-            } catch (RuntimeException | ServerException | ConflictException | NotFoundException x) {
-                if (config.isDev()) {
-                    publishEvent(EventType.ERROR, workspaceId, x.getLocalizedMessage());
-                    cleanupStartResources(workspaceId);
-                    throw x;
-                }
-                LOG.error(format("Error while creating non-dev machine '%s' in workspace '%s', environment '%s'",
-                                 config.getName(),
-                                 workspaceId,
-                                 envName),
-                          x);
-            }
-
-            // Machine destroying is an expensive operation which must be
-            // performed outside of the lock, this section checks if
-            // the workspace wasn't stopped while it is starting and sets
-            // polled flag to true if the workspace wasn't stopped plus
-            // polls the proceeded machine configuration from the queue
-            boolean queuePolled = false;
-            acquireWriteLock(workspaceId);
-            try {
-                ensurePreDestroyIsNotExecuted();
-                final Queue<MachineConfigImpl> queue = startQueues.get(workspaceId);
-                if (queue != null) {
-                    queue.poll();
-                    queuePolled = true;
-                    if (machine != null) {
-                        final RuntimeDescriptor descriptor = descriptors.get(workspaceId);
-                        if (config.isDev()) {
-                            descriptor.getRuntime().setDevMachine(machine);
-                            descriptor.setRuntimeStatus(WorkspaceStatus.RUNNING);
-                        }
-                        descriptor.getRuntime().getMachines().add(machine);
-                    }
-                }
-            } finally {
-                releaseWriteLock(workspaceId);
-            }
-
-            // Event publication should be performed outside of the lock
-            // as it may take some time to notify subscribers
-            if (machine != null && config.isDev()) {
-                publishEvent(EventType.RUNNING, workspaceId, null);
-            }
-
-            // If machine config is not polled from the queue
-            // then workspace was stopped and newly created machine
-            // must be destroyed(if such exists)
-            if (!queuePolled) {
-                if (machine != null) {
-                    machineManager.destroy(machine.getId(), false);
-                }
-                throw new ConflictException(format("Workspace '%s' start interrupted. Workspace stopped before all its machines started",
-                                                   workspaceId));
-            }
-
-            config = queuePeekOrFail(workspaceId);
-        }
-
-        // All the machines tried to start which means that queue
-        // should be empty and can be normally removed, but in the case of
-        // some unlucky timing, the workspace may be stopped and started again
-        // so the queue, which is guarded by the same lock as workspace descriptor
-        // may be initialized again with a new batch of machines to start,
-        // that's why queue should be removed only if it is not empty.
-        // On the other hand queue may not exist because workspace has been stopped
-        // just before queue utilization, which considered as a normal behaviour
-        acquireWriteLock(workspaceId);
-        try {
-            final Queue<MachineConfigImpl> queue = startQueues.get(workspaceId);
-            if (queue != null && queue.isEmpty()) {
-                startQueues.remove(workspaceId);
-            }
-        } finally {
-            releaseWriteLock(workspaceId);
-        }
-    }
-
-    /**
-     * Gets head config from the queue associated with the given {@code workspaceId}.
-     *
-     * <p>Note that this method won't actually poll the queue.
-     *
-     * <p>Fails if workspace start was interrupted by stop(queue doesn't exist).
-     *
-     * @return machine config which is in the queue head, or null
-     * if there are no machine configs left
-     * @throws ConflictException
-     *         when queue doesn't exist which means that {@link #stop(String)} executed
-     *         before all the machines started
-     * @throws ServerException
-     *         only if pre destroy has been invoked before peek config retrieved
-     */
-    private MachineConfigImpl queuePeekOrFail(String workspaceId) throws ConflictException, ServerException {
-        acquireReadLock(workspaceId);
-        try {
-            ensurePreDestroyIsNotExecuted();
-            final Queue<MachineConfigImpl> queue = startQueues.get(workspaceId);
-            if (queue == null) {
-                throw new ConflictException(
-                        format("Workspace '%s' start interrupted. Workspace was stopped before all its machines were started",
-                               workspaceId));
-            }
-            return queue.peek();
-        } finally {
-            releaseReadLock(workspaceId);
-        }
-    }
-
-    /**
-     * Starts the machine from the configuration, returns null if machine start failed.
-     */
-    private MachineImpl startMachine(MachineConfigImpl config,
-                                     String workspaceId,
-                                     String envName,
-                                     boolean recover) throws ServerException,
-                                                             NotFoundException,
-                                                             ConflictException {
-        MachineImpl machine;
-        try {
-            if (recover) {
-                machine = machineManager.recoverMachine(config, workspaceId, envName);
-            } else {
-                machine = machineManager.createMachineSync(config, workspaceId, envName);
-            }
-        } catch (ConflictException x) {
-            // The conflict is because of the already running machine
-            // which may be running by several reasons:
-            // 1. It has been running before the workspace started
-            // 2. It was started immediately after the workspace
-            // Consider the next example:
-            // If workspace starts machines from configurations [m1, m2, m3]
-            // and currently starting machine is 'm2' then it is still possible
-            // to use direct Machine API call to start the machine 'm3'
-            // which will result as a conflict for the workspace API during 'm3' start.
-            // This is not usual/normal behaviour but it should be handled.
-            // The handling logic gets the running machine instance by the 'm3' config
-            // and considers that the machine is started correctly, if it is impossible
-            // to find the corresponding machine then the fail will be reported
-            // and workspace runtime state will be changed according to the machine config context.
-            final Optional<MachineImpl> machineOpt = machineManager.getMachines()
-                                                                   .stream()
-                                                                   .filter(m -> m.getWorkspaceId().equals(workspaceId)
-                                                                                && m.getEnvName().equals(envName)
-                                                                                && m.getConfig().equals(config))
-                                                                   .findAny();
-            if (machineOpt.isPresent() && machineOpt.get().getStatus() == MachineStatus.RUNNING) {
-                machine = machineOpt.get();
-            } else {
-                throw x;
-            }
-        } catch (BadRequestException x) {
-            // TODO don't throw bad request exception from machine manager
-            throw new IllegalArgumentException(x.getLocalizedMessage(), x);
-        }
-        return machine;
     }
 
     /**
@@ -658,90 +496,31 @@ public class WorkspaceRuntimes {
         @Override
         public void onEvent(MachineStatusEvent event) {
             if (event.getEventType() == MachineStatusEvent.EventType.RUNNING) {
+                String workspaceId = event.getWorkspaceId();
+                acquireWriteLock(workspaceId);
                 try {
-                    final MachineImpl machine = machineManager.getMachine(event.getMachineId());
-                    if (!addMachine(machine)) {
-                        machineManager.destroy(machine.getId(), true);
+                    final RuntimeDescriptor descriptor = descriptors.get(workspaceId);
+                    // Ensure that workspace runtime exists for such machine
+                    // if it is not, then the machine should be immediately destroyed
+                    if (descriptor == null) {
+                        LOG.warn("Could not add machine '{}' to the workspace '{}' because workspace is in not running",
+                                 event.getMachineId(),
+                                 workspaceId);
+                        // todo destroy
+                        return;
                     }
-                } catch (NotFoundException | MachineException x) {
-                    LOG.warn(format("An error occurred during an attempt to add the machine '%s' to the workspace '%s'",
-                                    event.getMachineId(),
-                                    event.getWorkspaceId()),
-                             x);
+
+                    if (descriptor.getRuntimeStatus() == WorkspaceStatus.RUNNING) {
+//                        descriptor.getRuntime().getMachines().add();
+                        LOG.error("Machine " + event.getMachineId() + " was added to workspace + " + workspaceId);
+                    }
+//                } catch (ServerException e) {
+//                    LOG.error(e.getLocalizedMessage(), e);
+//                } catch (NotFoundException ignore) {
+                } finally {
+                    releaseWriteLock(workspaceId);
                 }
             }
-        }
-    }
-
-    /**
-     * Tries to add the machine to the WorkspaceRuntime.
-     *
-     * @return true if machine is added or will be added to the corresponding WorkspaceRuntime,
-     * returns false when incoming machine can't be added and should be destroyed.
-     */
-    @VisibleForTesting
-    boolean addMachine(Machine machine) throws NotFoundException, MachineException {
-        final String workspaceId = machine.getWorkspaceId();
-
-        acquireWriteLock(workspaceId);
-        try {
-            final RuntimeDescriptor descriptor = descriptors.get(workspaceId);
-
-            // Ensure that workspace runtime exists for such machine
-            // if it is not, then the machine should be immediately destroyed
-            if (descriptor == null) {
-                LOG.warn("Could not add machine '{}' to the workspace '{}' because workspace is in not running",
-                         machine.getId(),
-                         workspaceId);
-                return false;
-            }
-
-            // This may happen when either dev-machine started by WorkspaceRuntimes,
-            // or dev-machine started by direct call to MachineManager before WorkspaceRuntimes
-            // started it. In this case WorkspaceRuntimes#startMachine will fail & then if such
-            // machine exists it will be added to the corresponding WorkspaceRuntime.
-            if (machine.getConfig().isDev()) {
-                if (descriptor.getRuntimeStatus() == WorkspaceStatus.STARTING) {
-                    return true;
-                }
-                LOG.warn("Could not add another dev-machine '{}' to the workspace '{}'",
-                         machine.getId(),
-                         workspaceId);
-                return false;
-            }
-
-            // When workspace is not running then started machine must be immediately destroyed
-            // Example: status == STARTING & machine is non-dev
-            if (descriptor.getRuntimeStatus() != WorkspaceStatus.RUNNING) {
-                LOG.warn("Could not add machine '{}' to the workspace '{}' because workspace status is '{}'",
-                         machine.getId(),
-                         workspaceId,
-                         descriptor.getRuntimeStatus());
-                return false;
-            }
-
-            // Workspace is RUNNING and there is no start queue
-            // which means that machine can be added to the workspace
-            if (!startQueues.containsKey(workspaceId)) {
-                descriptor.getRuntime().getMachines().add(new MachineImpl(machine));
-                return true;
-            }
-
-            // These are configs of machines which are not started yet
-            final Queue<MachineConfigImpl> machineConfigs = startQueues.get(workspaceId);
-
-            // If there is no config equal to the machine config
-            // then the machine can be added to the workspace runtime
-            // otherwise it will be added later, after WorkspaceRuntimes starts it
-            if (!machineConfigs.stream().anyMatch(m -> m.equals(machine.getConfig()))) {
-                descriptor.getRuntime().getMachines().add(new MachineImpl(machine));
-            }
-
-            // All the cases are covered, in this case machine will be added
-            // directly by WorkspaceRuntimes, after it fails on #startMachine
-            return true;
-        } finally {
-            releaseWriteLock(workspaceId);
         }
     }
 
@@ -787,24 +566,6 @@ public class WorkspaceRuntimes {
             }
         } finally {
             releaseWriteLock(workspaceId);
-        }
-    }
-
-    private static <T> T removeFirstMatching(List<? extends T> elements, Predicate<T> predicate) {
-        T element = null;
-        for (final Iterator<? extends T> it = elements.iterator(); it.hasNext() && element == null; ) {
-            final T next = it.next();
-            if (predicate.test(next)) {
-                element = next;
-                it.remove();
-            }
-        }
-        return element;
-    }
-
-    private void ensurePreDestroyIsNotExecuted() throws ServerException {
-        if (isPreDestroyInvoked) {
-            throw new ServerException("Could not perform operation because application server is stopping");
         }
     }
 

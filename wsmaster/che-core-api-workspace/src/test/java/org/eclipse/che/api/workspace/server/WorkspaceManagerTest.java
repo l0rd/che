@@ -577,15 +577,15 @@ public class WorkspaceManagerTest {
     }
 
     private RuntimeDescriptor createDescriptor(WorkspaceImpl workspace, WorkspaceStatus status) {
-        final WorkspaceRuntimeImpl runtime = new WorkspaceRuntimeImpl(workspace.getConfig().getDefaultEnv());
-        final String env = workspace.getConfig().getDefaultEnv();
-        for (MachineConfigImpl machineConfig : workspace.getConfig()
-                                                        .getEnvironment(workspace.getConfig().getDefaultEnv())
-                                                        .get()
+        EnvironmentImpl environment = workspace.getConfig()
+                                               .getEnvironment(workspace.getConfig().getDefaultEnv())
+                                               .get();
+        final WorkspaceRuntimeImpl runtime = new WorkspaceRuntimeImpl(environment.getName(), environment.getType());
+        for (MachineConfigImpl machineConfig : environment
                                                         .getMachineConfigs()) {
             final MachineImpl machine = MachineImpl.builder()
                                                    .setConfig(machineConfig)
-                                                   .setEnvName(env)
+                                                   .setEnvName(environment.getName())
                                                    .setId(NameGenerator.generate("machine", 10))
                                                    .setOwner(workspace.getNamespace())
                                                    .setRuntime(new MachineRuntimeInfoImpl(emptyMap(), emptyMap(), emptyMap()))

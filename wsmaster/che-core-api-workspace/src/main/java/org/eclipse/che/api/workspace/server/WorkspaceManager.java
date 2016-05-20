@@ -98,7 +98,7 @@ public class WorkspaceManager {
     public WorkspaceManager(WorkspaceDao workspaceDao,
                             WorkspaceRuntimes workspaceRegistry,
                             EventService eventService,
-                            MachineManager machineManager,
+                            MachineManager machineManager, // todo remove direct usage of machine manager here
                             UserManager userManager,
                             @Named("workspace.runtime.auto_snapshot") boolean defaultAutoSnapshot,
                             @Named("workspace.runtime.auto_restore") boolean defaultAutoRestore) {

@@ -622,17 +622,18 @@ public class WorkspaceServiceTest {
     public void testWorkspaceLinks() throws Exception {
         // given
         final WorkspaceImpl workspace = createWorkspace(createConfigDto());
-        final WorkspaceRuntimeImpl runtime = new WorkspaceRuntimeImpl(workspace.getConfig().getDefaultEnv());
-        final MachineConfigImpl devCfg = workspace.getConfig()
-                                                  .getEnvironment(workspace.getConfig().getDefaultEnv())
-                                                  .get()
+        EnvironmentImpl environment = workspace.getConfig()
+                                               .getEnvironment(workspace.getConfig().getDefaultEnv())
+                                               .get();
+        final WorkspaceRuntimeImpl runtime = new WorkspaceRuntimeImpl(environment.getName(), environment.getType());
+        final MachineConfigImpl devCfg = environment
                                                   .getMachineConfigs()
                                                   .iterator()
                                                   .next();
         runtime.setDevMachine(new MachineImpl(devCfg,
                                               "machine123",
                                               workspace.getId(),
-                                              workspace.getConfig().getDefaultEnv(),
+                                              environment.getName(),
                                               USER_ID,
                                               MachineStatus.RUNNING,
                                               new MachineRuntimeInfoImpl(emptyMap(),

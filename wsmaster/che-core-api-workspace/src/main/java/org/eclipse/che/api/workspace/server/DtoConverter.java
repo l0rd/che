@@ -150,6 +150,8 @@ public final class DtoConverter {
                                                      .withScript(env.getRecipe().getScript()));
         }
         return newDto(EnvironmentDto.class).withName(env.getName())
+                                           .withType(env.getType())
+                                           .withConfig(env.getConfig())
                                            .withMachineConfigs(env.getMachineConfigs()
                                                                   .stream()
                                                                   .map(org.eclipse.che.api.machine.server.DtoConverter::asDto)

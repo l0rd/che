@@ -16,7 +16,9 @@ import org.eclipse.che.api.core.model.machine.Limits;
  * @author Alexander Garagatyi
  */
 public class LimitsImpl implements Limits {
-    private final int memory;
+    private int memory;
+
+    public LimitsImpl() {}
 
     public LimitsImpl(Limits limits) {
         if(limits != null) {
@@ -33,6 +35,10 @@ public class LimitsImpl implements Limits {
     @Override
     public int getRam() {
         return memory;
+    }
+
+    public void setRam(int memory) {
+        this.memory = memory;
     }
 
     @Override

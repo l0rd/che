@@ -31,6 +31,7 @@ public interface Environment {
      * Returns the recipe (the main script) to define this environment (compose, kubernetes pod).
      * Type of this recipe defines engine for composing machines network runtime
      */
+    @Deprecated
     Recipe getRecipe();
 
     /**
@@ -39,5 +40,20 @@ public interface Environment {
      * or for particular time (for example this information may be reasonable accessible only when we start network or so)
      * to investigate
      */
+    @Deprecated
     List<? extends MachineConfig> getMachineConfigs();
+
+    /**
+     * Returns type of environment, e.g. che, compose, opencompose, etc.
+     * It is mandatory and case insensitive.
+     */
+    String getType();
+
+    /**
+     * Returns configuration of environment.
+     * Content is implementation specific and depends on {@link #getType()}
+     */
+    String getConfig();
+
+    // TODO consider url types of environment, so we are able to provide an url to the env script instead of env script
 }

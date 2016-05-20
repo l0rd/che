@@ -47,6 +47,13 @@ public interface MachineConfig {
     Limits getLimits();
 
     /**
+     * List of machines from env current machine is linked with network.
+     * <p/>
+     * Machine from link will be available to current machine by host equal to machine's name.
+     */
+    List<String> getMachineLinks();
+
+    /**
      * Get configuration of servers inside of machine.
      *
      * <p>Key is port/transport protocol, e.g. 8080/tcp or 100100/udp
