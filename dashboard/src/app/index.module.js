@@ -39,11 +39,11 @@ let initModule = angular.module('userDashboard', ['ngAnimate', 'ngCookies', 'ngT
 initModule.config(['$routeProvider', ($routeProvider) => {
   $routeProvider.accessWhen = (path, route) => {
     route.resolve || (route.resolve = {});
-    route.resolve.app = ['cheBranding', '$q', 'cheProfile', 'cheUser', (cheBranding, $q, cheProfile, cheUser) => {
+    route.resolve.app = ['cheBranding', '$q', 'cheUser', 'chePreferences', (cheBranding, $q, cheUser, chePreferences) => {
       var deferred = $q.defer();
 
       cheUser.fetchUser().then(() => {
-        let profilePreferences = cheProfile.getPreferences();
+        let profilePreferences = chePreferences.getPreferences();
         if (profilePreferences && profilePreferences.$resolved) {
           deferred.resolve();
         } else {
@@ -65,11 +65,11 @@ initModule.config(['$routeProvider', ($routeProvider) => {
 
   $routeProvider.accessOtherWise = (route) => {
     route.resolve || (route.resolve = {});
-    route.resolve.app = ['$q', 'cheProfile', 'cheUser', ($q, cheProfile, cheUser) => {
+    route.resolve.app = ['$q', 'cheUser', 'chePreferences', ($q, cheUser, chePreferences) => {
       var deferred = $q.defer();
 
       cheUser.fetchUser().then(() => {
-        let profilePreferences = cheProfile.getPreferences();
+        let profilePreferences = chePreferences.getPreferences();
         if (profilePreferences && profilePreferences.$resolved) {
           deferred.resolve();
         } else {

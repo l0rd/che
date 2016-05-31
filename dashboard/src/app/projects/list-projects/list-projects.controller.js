@@ -49,7 +49,7 @@ export class ListProjectsCtrl {
         }
       });
 
-    let profilePreferences = cheAPI.getProfile().getPreferences();
+    let profilePreferences = cheAPI.getPreferences().getPreferences();
 
     this.profileCreationDate = profilePreferences['che:created'];
 

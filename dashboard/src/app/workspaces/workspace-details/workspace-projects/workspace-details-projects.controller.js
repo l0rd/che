@@ -27,7 +27,7 @@ export class WorkspaceDetailsProjectsCtrl {
     this.$mdMedia = $mdMedia;
     this.workspaceId = $route.current.params.workspaceId;
 
-    let profilePreferences = cheAPI.getProfile().getPreferences();
+    let profilePreferences = cheAPI.getPreferences().getPreferences();
 
     this.profileCreationDate = profilePreferences['che:created'];
 
