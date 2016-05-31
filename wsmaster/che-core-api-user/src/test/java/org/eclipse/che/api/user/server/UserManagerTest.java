@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.che.api.user.server;
 
+import org.eclipse.che.api.core.ConflictException;
+import org.eclipse.che.api.core.NotFoundException;
 import org.eclipse.che.api.core.ServerException;
 import org.eclipse.che.api.core.model.user.Profile;
 import org.eclipse.che.api.core.model.user.User;
@@ -23,6 +25,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
+import java.util.Collections;
 import java.util.concurrent.Callable;
 
 import static org.mockito.Matchers.any;
@@ -30,6 +33,8 @@ import static org.mockito.Matchers.anyMapOf;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.fail;
@@ -108,6 +113,87 @@ public class UserManagerTest {
         final String id = userCaptor.getValue().getId();
         assertNotNull(id);
         assertNotEquals(id, "identifier");
+    }
+
+    @Test(expectedExceptions = NullPointerException.class)
+    public void shouldThrowNpeWhenUpdatingUserWithNullEntity() throws Exception {
+        manager.update(null);
+    }
+
+    @Test
+    public void shouldUpdateUser() throws Exception {
+        final User user = new UserImpl("identifier", "test@email.com", "testName", "password", Collections.emptyList());
+
+        manager.update(user);
+
+        verify(userDao).update(new UserImpl(user));
+    }
+
+    @Test(expectedExceptions = NullPointerException.class)
+    public void shouldThrownNpeWhenTryingToGetUserByNullId() throws Exception {
+        manager.getById(null);
+    }
+
+    @Test
+    public void shouldGetUserById() throws Exception {
+        final User user = new UserImpl("identifier", "test@email.com", "testName", "password", Collections.singletonList("alias"));
+        when(manager.getById(user.getId())).thenReturn(user);
+
+        assertEquals(manager.getById(user.getId()), user);
+    }
+
+    @Test(expectedExceptions = NullPointerException.class)
+    public void shouldThrownNpeWhenTryingToGetUserByNullAlias() throws Exception {
+        manager.getByAlias(null);
+    }
+
+    @Test
+    public void shouldGetUserByAlias() throws Exception {
+        final User user = new UserImpl("identifier", "test@email.com", "testName", "password", Collections.singletonList("alias"));
+        when(manager.getByAlias("alias")).thenReturn(user);
+
+        assertEquals(manager.getByAlias("alias"), user);
+    }
+
+    @Test(expectedExceptions = NullPointerException.class)
+    public void shouldThrownNpeWhenTryingToGetUserByNullName() throws Exception {
+        manager.getByName(null);
+    }
+
+    @Test
+    public void shouldGetUserByName() throws Exception {
+        final User user = new UserImpl("identifier", "test@email.com", "testName", "password", Collections.singletonList("alias"));
+        when(manager.getByName(user.getName())).thenReturn(user);
+
+        assertEquals(manager.getByName(user.getName()), user);
+    }
+
+
+    @Test(expectedExceptions = NullPointerException.class)
+    public void shouldThrownNpeWhenTryingToGetUserWithNullEmail() throws Exception {
+        manager.getByEmail(null);
+    }
+
+    @Test
+    public void shouldGetUserByEmail() throws Exception {
+        final User user = new UserImpl("identifier", "test@email.com", "testName", "password", Collections.singletonList("alias"));
+        when(manager.getByEmail(user.getEmail())).thenReturn(user);
+
+        assertEquals(manager.getByEmail(user.getEmail()), user);
+    }
+
+    @Test(expectedExceptions = NullPointerException.class)
+    public void shouldThrowNpeWhenRemovingUserByNullId() throws Exception {
+        manager.remove(null);
+    }
+
+    @Test
+    public void shouldRemoveUser() throws Exception {
+        manager.remove("user123");
+
+        verify(userDao).remove("user123");
+        verify(preferencesManager).remove("user123");
+        verify(profileManager).remove("user123");
     }
 
     @DataProvider(name = "rollback")
