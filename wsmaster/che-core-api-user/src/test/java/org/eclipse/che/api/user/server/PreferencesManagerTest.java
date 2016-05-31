@@ -21,6 +21,7 @@ import org.mockito.testng.MockitoTestNGListener;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -92,5 +93,60 @@ public class PreferencesManagerTest {
         assertEquals(preferencesCaptor.getValue(), ImmutableMap.of("pKey2", "pValue2",
                                                                    "pKey3", "pValue3",
                                                                    "pKey4", "pValue4"));
+    }
+
+    @Test
+    public void shouldGetPreferencesByUser() throws Exception {
+        final Map<String, String> preferences = ImmutableMap.of("name", "value");
+        when(preferenceDao.getPreferences("user123")).thenReturn(preferences);
+
+        assertEquals(preferencesManager.find("user123"), preferences);
+    }
+
+    @Test
+    public void shouldGetPreferencesByUserAndFilter() throws Exception {
+        final Map<String, String> preferences = ImmutableMap.of("name", "value");
+        when(preferenceDao.getPreferences("user123", "name.*")).thenReturn(preferences);
+
+        assertEquals(preferencesManager.find("user123", "name.*"), preferences);
+    }
+
+    @Test(expectedExceptions = NullPointerException.class)
+    public void getPreferencesShouldThrowNpeWhenUserIdIsNull() throws Exception {
+        preferencesManager.find(null);
+    }
+
+    @Test(expectedExceptions = NullPointerException.class)
+    public void getPreferencesByUserAndFilterShouldThrowNpeWhenUserIdIsNull() throws Exception {
+        preferencesManager.find(null, "name.*");
+    }
+
+    @Test(expectedExceptions = NullPointerException.class)
+    public void shouldThrowNpeWhenRemovingPreferencesAndUserIdIsNull() throws Exception {
+        preferencesManager.remove(null);
+    }
+
+    @Test
+    public void shouldRemoveUserPreferences() throws Exception {
+        preferencesManager.remove("user123");
+
+        verify(preferenceDao).remove("user123");
+    }
+
+    @Test(expectedExceptions = NullPointerException.class)
+    public void shouldThrowNpeWhenSavePreferencesWithNullUser() throws Exception {
+        preferencesManager.save(null, Collections.emptyMap());
+    }
+
+    @Test(expectedExceptions = NullPointerException.class)
+    public void shouldThrowNpeWhenSavePreferencesWithNullPreferences() throws Exception {
+        preferencesManager.save("user123", null);
+    }
+
+    @Test
+    public void shouldSavePreferences() throws Exception {
+        preferencesManager.save("user123", Collections.emptyMap());
+
+        verify(preferenceDao).setPreferences("user123", Collections.emptyMap());
     }
 }

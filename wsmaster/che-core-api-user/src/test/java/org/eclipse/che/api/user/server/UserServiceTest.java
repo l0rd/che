@@ -372,6 +372,21 @@ public class UserServiceTest {
     }
 
     @Test
+    public void shouldNotUpdatePasswordIfPasswordIsNull() throws Exception {
+        final UserImpl testUser = copySubject();
+        when(userManager.getById(testUser.getId())).thenReturn(testUser);
+
+        final Response response = given().auth()
+                                         .basic(ADMIN_USER_NAME, ADMIN_USER_PASSWORD)
+                                         .contentType("application/x-www-form-urlencoded")
+                                         .when()
+                                         .post(SECURE_PATH + "/user/password");
+
+        assertEquals(response.getStatusCode(), 400);
+        assertEquals(unwrapError(response), "Password required");
+    }
+
+    @Test
     public void shouldRemoveUser() throws Exception {
         final Response response = given().auth()
                                          .basic(ADMIN_USER_NAME, ADMIN_USER_PASSWORD)

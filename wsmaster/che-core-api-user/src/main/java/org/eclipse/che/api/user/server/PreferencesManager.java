@@ -149,6 +149,8 @@ public class PreferencesManager {
     /**
      * Removes the preferences with the given {@code names}.
      *
+     * @param userId
+     *         the id of the user to remove preferences
      * @param names
      *         the names to remove
      * @throws NullPointerException

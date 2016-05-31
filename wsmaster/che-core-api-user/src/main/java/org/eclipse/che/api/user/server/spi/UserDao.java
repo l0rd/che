@@ -17,7 +17,7 @@ import org.eclipse.che.api.core.UnauthorizedException;
 import org.eclipse.che.api.user.server.model.impl.UserImpl;
 
 /**
- * Defies data access object contract for {@link UserImpl}.
+ * Defines data access object contract for {@link UserImpl}.
  *
  * <p>The implementation is not required to be responsible for persistent layer
  * data dto integrity. It simply transfers data from one layer to another,
