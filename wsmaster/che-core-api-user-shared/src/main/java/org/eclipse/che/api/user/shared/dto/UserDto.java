@@ -10,43 +10,56 @@
  *******************************************************************************/
 package org.eclipse.che.api.user.shared.dto;
 
+import org.eclipse.che.api.core.model.user.User;
 import org.eclipse.che.api.core.rest.shared.dto.Link;
 import org.eclipse.che.dto.shared.DTO;
 import io.swagger.annotations.ApiModelProperty;
 
 import java.util.List;
-import java.util.Map;
 
 /**
- * @author andrew00x
+ * @author Yevhenii Voevodin
  */
 @DTO
-public interface ProfileDescriptor {
+public interface UserDto extends User {
+    @ApiModelProperty("User ID")
+    String getId();
 
     void setId(String id);
 
-    @ApiModelProperty("Profile ID")
-    String getId();
+    UserDto withId(String id);
 
-    ProfileDescriptor withId(String id);
+    @ApiModelProperty("User alias which is used for oAuth")
+    List<String> getAliases();
 
-    @ApiModelProperty("User ID")
-    String getUserId();
+    void setAliases(List<String> aliases);
 
-    void setUserId(String id);
+    UserDto withAliases(List<String> aliases);
 
-    ProfileDescriptor withUserId(String id);
+    @ApiModelProperty("User email")
+    String getEmail();
 
-    @ApiModelProperty("Profile attributes")
-    Map<String, String> getAttributes();
+    void setEmail(String email);
 
-    void setAttributes(Map<String, String> attributes);
+    UserDto withEmail(String email);
 
-    ProfileDescriptor withAttributes(Map<String, String> attributes);
+    @ApiModelProperty("User name")
+    String getName();
+
+    void setName(String name);
+
+    UserDto withName(String name);
+
+    @ApiModelProperty("User password")
+    String getPassword();
+
+    void setPassword(String password);
+
+    UserDto withPassword(String password);
 
     List<Link> getLinks();
 
     void setLinks(List<Link> links);
 
-    ProfileDescriptor withLinks(List<Link> links);
+    UserDto withLinks(List<Link> links);
 }

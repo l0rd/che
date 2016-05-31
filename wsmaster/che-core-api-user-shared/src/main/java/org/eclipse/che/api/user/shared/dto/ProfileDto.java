@@ -10,56 +10,41 @@
  *******************************************************************************/
 package org.eclipse.che.api.user.shared.dto;
 
+import org.eclipse.che.api.core.model.user.Profile;
 import org.eclipse.che.api.core.rest.shared.dto.Link;
 import org.eclipse.che.dto.shared.DTO;
 import io.swagger.annotations.ApiModelProperty;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author andrew00x
  */
 @DTO
-public interface UserDescriptor {
-    @ApiModelProperty("User ID")
-    String getId();
+public interface ProfileDto extends Profile {
 
     void setId(String id);
 
-    UserDescriptor withId(String id);
+    @ApiModelProperty("Profile ID")
+    String getId();
 
+    ProfileDto withId(String id);
 
-    @ApiModelProperty("User alias which is used for oAuth")
-    List<String> getAliases();
+    @ApiModelProperty("Profile attributes")
+    Map<String, String> getAttributes();
 
-    void setAliases(List<String> aliases);
+    void setAttributes(Map<String, String> attributes);
 
-    UserDescriptor withAliases(List<String> aliases);
-
-    @ApiModelProperty("User email")
-    String getEmail();
-
-    void setEmail(String email);
-
-    UserDescriptor withEmail(String email);
-
-    @ApiModelProperty("User name")
-    String getName();
-
-    void setName(String name);
-
-    UserDescriptor withName(String name);
-
-    @ApiModelProperty("User password")
-    String getPassword();
-
-    void setPassword(String password);
-
-    UserDescriptor withPassword(String password);
+    ProfileDto withAttributes(Map<String, String> attributes);
 
     List<Link> getLinks();
 
     void setLinks(List<Link> links);
 
-    UserDescriptor withLinks(List<Link> links);
+    ProfileDto withLinks(List<Link> links);
+
+    String getEmail();
+
+    ProfileDto withEmail(String email);
 }
