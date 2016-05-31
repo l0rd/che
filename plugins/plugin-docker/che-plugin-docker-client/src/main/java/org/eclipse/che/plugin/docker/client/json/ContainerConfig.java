@@ -10,29 +10,32 @@
  *******************************************************************************/
 package org.eclipse.che.plugin.docker.client.json;
 
+import org.eclipse.che.plugin.docker.client.json.container.NetworkingConfig;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 /** @author andrew00x */
 public class ContainerConfig {
-    private String     domainName;
-    private int        cpuShares;
-    private String     cpuset;
-    private boolean    attachStdin;
-    private boolean    attachStdout;
-    private boolean    attachStderr;
-    private boolean    tty;
-    private boolean    openStdin;
-    private boolean    stdinOnce;
-    private String[]   env;
-    private String[]   cmd;
-    private String     entrypoint;
-    private String     image;
-    private boolean    networkDisabled;
-    private String     macAddress;
-    private String[]   securityOpts;
-    private HostConfig hostConfig;
+    private String           domainName;
+    private int              cpuShares;
+    private String           cpuset;
+    private boolean          attachStdin;
+    private boolean          attachStdout;
+    private boolean          attachStderr;
+    private boolean          tty;
+    private boolean          openStdin;
+    private boolean          stdinOnce;
+    private String[]         env;
+    private String[]         cmd;
+    private String           entrypoint;
+    private String           image;
+    private boolean          networkDisabled;
+    private String           macAddress;
+    private String[]         securityOpts;
+    private HostConfig       hostConfig;
+    private NetworkingConfig networkingConfig;
 
     // from docs for 1.15 API https://docs.docker.com/reference/api/docker_remote_api_v1.15/#create-a-container
     // An object mapping ports to an empty object in the form of: "ExposedPorts": { "<port>/<tcp|udp>: {}" }
@@ -342,6 +345,19 @@ public class ContainerConfig {
         return this;
     }
 
+    public NetworkingConfig getNetworkingConfig() {
+        return networkingConfig;
+    }
+
+    public void setNetworkingConfig(NetworkingConfig networkingConfig) {
+        this.networkingConfig = networkingConfig;
+    }
+
+    public ContainerConfig withNetworkingConfig(NetworkingConfig networkingConfig) {
+        this.networkingConfig = networkingConfig;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "ContainerConfig{" +
@@ -368,6 +384,7 @@ public class ContainerConfig {
                ", workingDir='" + workingDir + '\'' +
                ", volumes=" + volumes +
                ", labels=" + labels +
+               ", networkingConfig=" + networkingConfig +
                '}';
     }
 }
