@@ -24,7 +24,7 @@ import javax.inject.Singleton;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Preferences manager layer, simplifies profile service by
+ * Preferences manager layer, simplifies prefernces service by
  * taking all the business logic out from the service and making that logic
  * easily reusable throughout the system.
  *
