@@ -28,12 +28,15 @@ import org.eclipse.che.api.machine.server.model.impl.MachineSourceImpl;
 import org.eclipse.che.api.machine.server.spi.Instance;
 import org.eclipse.che.api.machine.server.spi.InstanceProcess;
 import org.eclipse.che.api.machine.server.util.RecipeDownloader;
+import org.eclipse.che.api.machine.server.util.RecipeRetriever;
 import org.eclipse.che.api.machine.server.wsagent.WsAgentLauncher;
 import org.eclipse.che.api.user.server.UserManager;
 import org.eclipse.che.api.workspace.server.WorkspaceManager;
 import org.eclipse.che.api.workspace.server.WorkspaceRuntimes;
+import org.eclipse.che.api.workspace.server.env.impl.che.CheEnvStartStrategy;
 import org.eclipse.che.api.workspace.server.env.impl.che.CheEnvironmentEngine;
 import org.eclipse.che.api.workspace.server.env.impl.che.CheEnvironmentValidator;
+import org.eclipse.che.api.workspace.server.env.impl.che.LinksBasedCheEnvStartStrategy;
 import org.eclipse.che.api.workspace.server.model.impl.EnvironmentImpl;
 import org.eclipse.che.api.workspace.server.model.impl.WorkspaceConfigImpl;
 import org.eclipse.che.api.workspace.server.model.impl.WorkspaceImpl;
@@ -41,8 +44,14 @@ import org.eclipse.che.api.workspace.server.spi.WorkspaceDao;
 import org.eclipse.che.commons.env.EnvironmentContext;
 import org.eclipse.che.commons.subject.SubjectImpl;
 import org.eclipse.che.plugin.docker.client.DockerConnector;
+import org.eclipse.che.plugin.docker.client.DockerConnectorConfiguration;
+import org.eclipse.che.plugin.docker.client.InitialAuthConfig;
+import org.eclipse.che.plugin.docker.client.connection.DockerConnectionFactory;
+import org.eclipse.che.plugin.docker.client.helper.DefaultNetworkFinder;
 import org.eclipse.che.plugin.docker.client.json.ContainerInfo;
+import org.eclipse.che.plugin.docker.machine.local.LocalDockerNode;
 import org.eclipse.che.plugin.docker.machine.node.DockerNode;
+import org.eclipse.che.plugin.docker.machine.node.WorkspaceFolderPathProvider;
 import org.mockito.Mock;
 import org.mockito.testng.MockitoTestNGListener;
 import org.testng.annotations.AfterMethod;
@@ -50,6 +59,8 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
+import java.net.URI;
 import java.util.Collections;
 
 import static java.util.Collections.singletonList;
@@ -65,32 +76,66 @@ import static org.testng.Assert.assertTrue;
 public class WorkspaceManagerRealtest {
 
     @Mock
-    private EventService             eventService;
+    private EventService                 eventService;
     @Mock
-    private WorkspaceDao             workspaceDao;
+    private WorkspaceDao                 workspaceDao;
     @Mock
-    private UserManager              userManager;
+    private UserManager                  userManager;
     @Mock
-    private MachineInstanceProviders machineInstanceProviders;
+    private MachineInstanceProviders     machineInstanceProviders;
     @Mock
-    private SnapshotDao              snapshotDao;
+    private SnapshotDao                  snapshotDao;
     @Mock
-    private WsAgentLauncher          wsAgentLauncher;
+    private WsAgentLauncher              wsAgentLauncher;
     @Mock
-    private RecipeDownloader         recipeDownloader;
+    private DockerInstanceStopDetector   stopDetector;
+    @Mock
+    private WorkspaceFolderPathProvider  workspaceFolderPathProvider;
+    @Mock
+    private DockerContainerNameGenerator containerNameGenerator;
+    @Mock
+    private DockerFactory                dockerFactory;
 
-    private DockerConnector         dockerConnector;
-    private DockerInstanceProvider  instanceProvider;
-    private MachineRegistry         machineRegistry;
-    private MachineManager          machineManager;
-    private CheEnvironmentValidator environmentValidator;
-    private CheEnvironmentEngine    engine;
-    private WorkspaceRuntimes       runtimes;
-    private WorkspaceManager        workspaceManager;
+    private RecipeDownloader             recipeDownloader;
+    private RecipeRetriever              recipeRetriever;
+    private DockerConnectorConfiguration connectorConfiguration;
+    private CheEnvStartStrategy          envStartStrategy;
+    private DockerConnector              dockerConnector;
+    private DockerInstanceProvider       instanceProvider;
+    private MachineRegistry              machineRegistry;
+    private MachineManager               machineManager;
+    private CheEnvironmentValidator      environmentValidator;
+    private CheEnvironmentEngine         engine;
+    private WorkspaceRuntimes            runtimes;
+    private WorkspaceManager             workspaceManager;
 
     @BeforeMethod
     public void setUp() throws Exception {
-//        instanceProvider = new DockerInstanceProvider();
+        connectorConfiguration = new DockerConnectorConfiguration(new InitialAuthConfig(),
+                                                                  new DefaultNetworkFinder());
+        dockerConnector = new DockerConnector(connectorConfiguration, new DockerConnectionFactory(connectorConfiguration));
+        envStartStrategy = new LinksBasedCheEnvStartStrategy();
+        recipeDownloader = new RecipeDownloader(new URI("http://localhost:8080/api"));
+        recipeRetriever = new RecipeRetriever(recipeDownloader);
+        instanceProvider = new DockerInstanceProvider(dockerConnector,
+                                                      connectorConfiguration,
+                                                      dockerFactory,
+                                                      stopDetector,
+                                                      containerNameGenerator,
+                                                      recipeRetriever,
+                                                      Collections.emptySet(),
+                                                      Collections.emptySet(),
+                                                      Collections.emptySet(),
+                                                      Collections.emptySet(),
+                                                      "",
+                                                      workspaceFolderPathProvider,
+                                                      "/home/gaal/workspace",
+                                                      false,
+                                                      false,
+                                                      Collections.emptySet(),
+                                                      Collections.emptySet(),
+                                                      false);
+
         machineRegistry = new MachineRegistry();
         machineManager = new MachineManager(snapshotDao,
                                             machineRegistry,
@@ -100,7 +145,7 @@ public class WorkspaceManagerRealtest {
                                             2048,
                                             wsAgentLauncher);
         environmentValidator = new CheEnvironmentValidator(machineInstanceProviders);
-        engine = new CheEnvironmentEngine(machineManager, environmentValidator);
+        engine = new CheEnvironmentEngine(machineManager, environmentValidator, envStartStrategy);
         runtimes = new WorkspaceRuntimes(eventService, Collections.singletonMap(CheEnvironmentEngine.ENVIRONMENT_TYPE, engine));
         workspaceManager = new WorkspaceManager(workspaceDao,
                                                 runtimes,
@@ -130,7 +175,6 @@ public class WorkspaceManagerRealtest {
         when(machineInstanceProviders.getProviderTypes()).thenReturn(Collections.singleton("docker"));
         when(machineInstanceProviders.getProvider("docker")).thenReturn(instanceProvider);
 
-
         WorkspaceImpl ws = workspaceManager.startWorkspace("wsId", null, null);
 
         boolean starting = true;
@@ -139,7 +183,7 @@ public class WorkspaceManagerRealtest {
 
             WorkspaceImpl ws1 = workspaceManager.getWorkspace("wsId");
 
-            starting = ws1.getStatus() == WorkspaceStatus.RUNNING;
+            starting = ws1.getStatus() != WorkspaceStatus.RUNNING;
         }
 
         assertTrue(true);
@@ -185,15 +229,20 @@ public class WorkspaceManagerRealtest {
         @Override
         public DockerNode createNode(@Assisted("workspace") String workspaceId, @Assisted("container") String containerId)
                 throws MachineException {
-            return null;
-//            return new LocalDockerNode("wsId", new LocalWorkspaceFolderPathProvider("/tmp", ));
+            try {
+                return new LocalDockerNode("wsId",
+                                           workspaceFolderPathProvider,
+                                           connectorConfiguration);
+            } catch (IOException e) {
+                return null;
+            }
         }
 
         @Override
         public DockerInstanceRuntimeInfo createMetadata(@Assisted ContainerInfo containerInfo, @Assisted String containerHost,
                                                         @Assisted MachineConfig machineConfig) {
-//            return new DockerInstanceRuntimeInfo();
-            return null;
+            return new DockerInstanceRuntimeInfo(containerInfo, containerHost, machineConfig, Collections.emptySet(),
+                                                 Collections.emptySet());
         }
     }
 }

@@ -26,6 +26,7 @@ import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.lang.String.format;
@@ -47,7 +48,9 @@ public class CheEnvironmentValidator implements EnvironmentValidator {
     public String getType() {
         return CheEnvironmentEngine.ENVIRONMENT_TYPE;
     }
-// todo validate links in the same way as machine name
+    // todo validate links in the same way as machine name
+    // todo validate that env contains machine with name equal to link
+    // todo use strategy to check if order is valid
     @Override
     public void validate(Environment env) throws BadRequestException {
         final String envName = env.getName();
@@ -76,7 +79,7 @@ public class CheEnvironmentValidator implements EnvironmentValidator {
     }
 
     // todo change to new entity that contains network
-    public List<? extends MachineConfig> parse(Environment env) throws IllegalArgumentException {
+    public List<MachineConfig> parse(Environment env) throws IllegalArgumentException {
         List<? extends MachineConfig> machines;
         if (env.getConfig() != null) {
             // parse new format
@@ -89,7 +92,7 @@ public class CheEnvironmentValidator implements EnvironmentValidator {
             // old format
             machines = env.getMachineConfigs();
         }
-        return machines;
+        return machines.stream().collect(Collectors.toList());
     }
 
     private void validateMachine(MachineConfig machineCfg, String envName) throws BadRequestException {

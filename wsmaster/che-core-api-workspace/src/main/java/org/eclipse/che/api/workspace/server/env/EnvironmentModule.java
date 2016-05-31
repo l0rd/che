@@ -31,5 +31,8 @@ public class EnvironmentModule extends AbstractModule {
         MapBinder<String, EnvironmentValidator> validators =
                 MapBinder.newMapBinder(binder(), String.class, EnvironmentValidator.class);
         validators.addBinding(CheEnvironmentEngine.ENVIRONMENT_TYPE).to(CheEnvironmentValidator.class);
+
+        bind(org.eclipse.che.api.workspace.server.env.impl.che.CheEnvStartStrategy.class)
+                .to(org.eclipse.che.api.workspace.server.env.impl.che.LinksBasedCheEnvStartStrategy.class);
     }
 }

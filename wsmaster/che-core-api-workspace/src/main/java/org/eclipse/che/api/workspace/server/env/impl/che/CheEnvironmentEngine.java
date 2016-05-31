@@ -59,14 +59,18 @@ public class CheEnvironmentEngine implements EnvironmentEngine {
     private final Map<String, Queue<MachineConfigImpl>> startQueues;
     private final MachineManager                        machineManager;
     private final CheEnvironmentValidator               cheEnvironmentValidator;
+    private final CheEnvStartStrategy                   startStrategy;
     private final Map<String, List<MachineImpl>>        machines;
 
     private volatile boolean isPreDestroyInvoked;
 
     @Inject
-    public CheEnvironmentEngine(MachineManager machineManager, CheEnvironmentValidator cheEnvironmentValidator) {
+    public CheEnvironmentEngine(MachineManager machineManager,
+                                CheEnvironmentValidator cheEnvironmentValidator,
+                                CheEnvStartStrategy startStrategy) {
         this.machineManager = machineManager;
         this.cheEnvironmentValidator = cheEnvironmentValidator;
+        this.startStrategy = startStrategy;
         this.startQueues = new HashMap<>();
         this.machines = new HashMap<>();
     }
@@ -85,15 +89,14 @@ public class CheEnvironmentEngine implements EnvironmentEngine {
             throws ServerException, NotFoundException, ConflictException, IllegalArgumentException {
 
         // check old and new environment format
-        List<? extends MachineConfig> machineConfigs = cheEnvironmentValidator.parse(env);
+        List<MachineConfig> machineConfigs = cheEnvironmentValidator.parse(env);
+
+        machineConfigs = startStrategy.order(machineConfigs);
 
         List<MachineConfigImpl> configs = machineConfigs.stream()
                                                         .map(MachineConfigImpl::new)
                                                         .collect(Collectors.toList());
 
-        // Create a new start queue with a dev machine in the queue head
-        final MachineConfigImpl devCfg = removeFirstMatching(configs, MachineConfig::isDev);
-        configs.add(0, devCfg);
         acquireWriteLock(workspaceId);
         try {
             startQueues.put(workspaceId, new ArrayDeque<>(configs));
@@ -133,11 +136,6 @@ public class CheEnvironmentEngine implements EnvironmentEngine {
         if (machinesCopy != null) {
             destroyRuntime(workspaceId, machinesCopy);
         }
-    }
-
-    @Override
-    public void stopMachine(String machineId) throws NotFoundException, ServerException {
-
     }
 
     @VisibleForTesting

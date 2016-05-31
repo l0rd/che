@@ -43,10 +43,17 @@ import org.eclipse.che.plugin.docker.client.DockerfileParser;
 import org.eclipse.che.plugin.docker.client.ProgressLineFormatterImpl;
 import org.eclipse.che.plugin.docker.client.ProgressMonitor;
 import org.eclipse.che.plugin.docker.client.json.ContainerConfig;
+import org.eclipse.che.plugin.docker.client.json.Filters;
 import org.eclipse.che.plugin.docker.client.json.HostConfig;
+import org.eclipse.che.plugin.docker.client.json.container.NetworkingConfig;
+import org.eclipse.che.plugin.docker.client.json.network.EndpointConfig;
+import org.eclipse.che.plugin.docker.client.json.network.Network;
+import org.eclipse.che.plugin.docker.client.json.network.NewNetwork;
 import org.eclipse.che.plugin.docker.client.params.PullParams;
 import org.eclipse.che.plugin.docker.client.params.RemoveImageParams;
 import org.eclipse.che.plugin.docker.client.params.TagParams;
+import org.eclipse.che.plugin.docker.client.params.network.CreateNetworkParams;
+import org.eclipse.che.plugin.docker.client.params.network.GetNetworksParams;
 import org.eclipse.che.plugin.docker.machine.node.DockerNode;
 import org.eclipse.che.plugin.docker.machine.node.WorkspaceFolderPathProvider;
 import org.slf4j.Logger;
@@ -72,6 +79,8 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.lang.String.format;
+import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static org.eclipse.che.plugin.docker.machine.DockerInstance.LATEST_TAG;
 
 /**
@@ -494,6 +503,14 @@ public class DockerInstanceProvider implements InstanceProvider {
                                     final LineConsumer outputConsumer)
             throws MachineException {
         try {
+            // todo
+            // do not create network for 1 container env
+            // remove network
+            // support overlay + default network + bridge
+
+            String networkName = machine.getWorkspaceId();
+            createNetwork(networkName);
+
             final Map<String, Map<String, String>> portsToExpose;
             final String[] volumes;
             final List<String> env;
@@ -526,16 +543,21 @@ public class DockerInstanceProvider implements InstanceProvider {
                    .map(entry -> entry.getKey() + "=" + entry.getValue())
                    .forEach(env::add);
 
+            final NetworkingConfig networkingConfig = new NetworkingConfig().withEndpointsConfig(singletonMap(
+                    networkName, new EndpointConfig().withAliases(singletonList(machine.getConfig().getName()))));
+
             final HostConfig hostConfig = new HostConfig().withBinds(volumes)
                                                           .withExtraHosts(allMachinesExtraHosts)
                                                           .withPublishAllPorts(true)
                                                           .withMemorySwap(-1)
                                                           .withMemory((long)machine.getConfig().getLimits().getRam() * 1024 * 1024)
-                                                          .withPrivileged(privilegeMode);
+                                                          .withPrivileged(privilegeMode)
+                                                          .withNetworkMode(networkName);
             final ContainerConfig config = new ContainerConfig().withImage(imageName)
                                                                 .withExposedPorts(portsToExpose)
                                                                 .withHostConfig(hostConfig)
-                                                                .withEnv(env.toArray(new String[env.size()]));
+                                                                .withEnv(env.toArray(new String[env.size()]))
+                                                                .withNetworkingConfig(networkingConfig);
 
             final String containerId = docker.createContainer(config, containerName).getId();
 
@@ -557,6 +579,14 @@ public class DockerInstanceProvider implements InstanceProvider {
                                                        outputConsumer);
         } catch (IOException e) {
             throw new MachineException(e.getLocalizedMessage(), e);
+        }
+    }
+
+    private void createNetwork(String networkName) throws IOException {
+        List<Network> networks = docker.getNetworks(GetNetworksParams.create().withFilters(new Filters().withFilter("name", networkName)));
+        if (networks.size() == 0) {
+            docker.createNetwork(CreateNetworkParams.create(new NewNetwork().withName(networkName)
+                                                                            .withCheckDuplicate(true)));
         }
     }
 
