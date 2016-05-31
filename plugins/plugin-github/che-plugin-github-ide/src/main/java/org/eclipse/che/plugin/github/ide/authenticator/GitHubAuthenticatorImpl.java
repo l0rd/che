@@ -135,7 +135,7 @@ public class GitHubAuthenticatorImpl implements OAuth2Authenticator, OAuthCallba
     }
 
     private String getAuthUrl() {
-        return  OAuth2AuthenticatorUrlProvider.get(baseUrl, "github", appContext.getCurrentUser().getProfile().getUserId(), Lists
+        return  OAuth2AuthenticatorUrlProvider.get(baseUrl, "github", appContext.getCurrentUser().getProfile().getId(), Lists
                 .asList("user", new String[]{"repo", "write:public_key"}));
     }
 

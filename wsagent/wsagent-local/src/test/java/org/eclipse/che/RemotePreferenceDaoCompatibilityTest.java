@@ -11,10 +11,12 @@
 package org.eclipse.che;
 
 import org.eclipse.che.api.core.rest.DefaultHttpJsonRequestFactory;
-import org.eclipse.che.api.user.server.UserProfileService;
-import org.eclipse.che.api.user.server.dao.PreferenceDao;
-import org.eclipse.che.api.user.server.dao.UserDao;
-import org.eclipse.che.api.user.server.dao.UserProfileDao;
+import org.eclipse.che.api.user.server.PreferencesManager;
+import org.eclipse.che.api.user.server.PreferencesService;
+import org.eclipse.che.api.user.server.ProfileService;
+import org.eclipse.che.api.user.server.spi.PreferenceDao;
+import org.eclipse.che.api.user.server.spi.ProfileDao;
+import org.eclipse.che.api.user.server.spi.UserDao;
 import org.eclipse.che.commons.env.EnvironmentContext;
 import org.eclipse.che.commons.subject.Subject;
 import org.eclipse.che.commons.subject.SubjectImpl;
@@ -41,7 +43,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests that {@link RemotePreferenceDao} uses correct methods of {@link UserProfileService}.
+ * Tests that {@link RemotePreferenceDao} uses correct methods of {@link ProfileService}.
  *
  * @author Yevhenii Voevodin
  */
@@ -53,16 +55,10 @@ public class RemotePreferenceDaoCompatibilityTest {
     private static final Subject           TEST_SUBJECT       = new SubjectImpl("name", "id", "token", null, false);
 
     @Mock
-    private PreferenceDao preferenceDaoMock;
-
-    @Mock
-    private UserDao userDao;
-
-    @Mock
-    private UserProfileDao userProfileDao;
+    private PreferencesManager preferenceManager;
 
     @InjectMocks
-    private UserProfileService profileService;
+    private PreferencesService preferenceService;
 
     @BeforeMethod
     private void setUp() {
@@ -77,7 +73,7 @@ public class RemotePreferenceDaoCompatibilityTest {
 
         remoteDao.getPreferences(TEST_SUBJECT.getUserId());
 
-        verify(preferenceDaoMock).getPreferences(TEST_SUBJECT.getUserId());
+        verify(preferenceManager).find(TEST_SUBJECT.getUserId());
     }
 
     @Test
@@ -86,7 +82,7 @@ public class RemotePreferenceDaoCompatibilityTest {
 
         remoteDao.getPreferences(TEST_SUBJECT.getUserId(), "filter");
 
-        verify(preferenceDaoMock).getPreferences(TEST_SUBJECT.getUserId(), "filter");
+        verify(preferenceManager).find(TEST_SUBJECT.getUserId(), "filter");
     }
 
     @Test
@@ -96,7 +92,7 @@ public class RemotePreferenceDaoCompatibilityTest {
 
         remoteDao.setPreferences(TEST_SUBJECT.getUserId(), prefs);
 
-        verify(preferenceDaoMock).setPreferences(TEST_SUBJECT.getUserId(), prefs);
+        verify(preferenceManager).save(TEST_SUBJECT.getUserId(), prefs);
     }
 
     @Test
@@ -105,7 +101,7 @@ public class RemotePreferenceDaoCompatibilityTest {
 
         remoteDao.remove(TEST_SUBJECT.getUserId());
 
-        verify(preferenceDaoMock).remove(TEST_SUBJECT.getUserId());
+        verify(preferenceManager).remove(TEST_SUBJECT.getUserId());
     }
 
     @Filter

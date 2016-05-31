@@ -1839,7 +1839,7 @@ public class JavaProject extends Openable implements IJavaProject, SuffixConstan
         // Init project preferences
         IScopeContext context = new ProjectScope(getProject());
         final IEclipsePreferences eclipsePreferences = context.getNode(JavaCore.PLUGIN_ID);
-//        updatePreferences(eclipsePreferences);
+//        update(eclipsePreferences);
         perProjectInfo.preferences = eclipsePreferences;
 
 //        // Listen to new preferences node
