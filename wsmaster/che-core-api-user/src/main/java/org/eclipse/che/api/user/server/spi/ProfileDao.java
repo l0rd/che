@@ -33,6 +33,8 @@ public interface ProfileDao {
      *         when {@code profile} is null
      * @throws ServerException
      *         when any error occurs
+     * @throws ConflictException
+     *         when profile for user {@code profile.getUserId()} already exists
      */
     void create(ProfileImpl profile) throws ServerException, ConflictException;
 
