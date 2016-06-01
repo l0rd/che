@@ -54,7 +54,7 @@ public class PreferencesServiceTest {
     private static final Subject            SUBJECT = new SubjectImpl("user", "user123", "token", emptyList(), false);
 
     @Mock(answer = Answers.RETURNS_MOCKS)
-    private PreferencesManager preferencesManager;
+    private PreferenceManager preferenceManager;
 
     @InjectMocks
     private PreferencesService preferencesService;
@@ -67,7 +67,7 @@ public class PreferencesServiceTest {
                                          .get(SECURE_PATH + "/preferences");
 
         assertEquals(response.getStatusCode(), 200);
-        verify(preferencesManager).find(SUBJECT.getUserId());
+        verify(preferenceManager).find(SUBJECT.getUserId());
     }
 
     @Test
@@ -78,7 +78,7 @@ public class PreferencesServiceTest {
                                          .get(SECURE_PATH + "/preferences?filter=.*github.*");
 
         assertEquals(response.getStatusCode(), 200);
-        verify(preferencesManager).find(SUBJECT.getUserId(), ".*github.*");
+        verify(preferenceManager).find(SUBJECT.getUserId(), ".*github.*");
     }
 
     @Test
@@ -94,7 +94,7 @@ public class PreferencesServiceTest {
                                          .post(SECURE_PATH + "/preferences");
 
         assertEquals(response.getStatusCode(), 204);
-        verify(preferencesManager).save(SUBJECT.getUserId(), preferences);
+        verify(preferenceManager).save(SUBJECT.getUserId(), preferences);
     }
 
     @Test
@@ -121,7 +121,7 @@ public class PreferencesServiceTest {
                                          .put(SECURE_PATH + "/preferences");
 
         assertEquals(response.getStatusCode(), 200);
-        verify(preferencesManager).update(SUBJECT.getUserId(), preferences);
+        verify(preferenceManager).update(SUBJECT.getUserId(), preferences);
     }
 
     @Test
@@ -145,7 +145,7 @@ public class PreferencesServiceTest {
                                          .delete(SECURE_PATH + "/preferences");
 
         assertEquals(response.getStatusCode(), 204);
-        verify(preferencesManager).remove(SUBJECT.getUserId(), asList("pref1", "pref2"));
+        verify(preferenceManager).remove(SUBJECT.getUserId(), asList("pref1", "pref2"));
     }
 
     @Test
@@ -157,7 +157,7 @@ public class PreferencesServiceTest {
                                          .delete(SECURE_PATH + "/preferences");
 
         assertEquals(response.getStatusCode(), 204);
-        verify(preferencesManager).remove(SUBJECT.getUserId());
+        verify(preferenceManager).remove(SUBJECT.getUserId());
     }
 
     @Filter

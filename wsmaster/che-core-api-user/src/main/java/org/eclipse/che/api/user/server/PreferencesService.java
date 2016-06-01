@@ -48,7 +48,7 @@ import static org.eclipse.che.api.user.server.Constants.LINK_REL_PREFERENCES;
 public class PreferencesService extends Service {
 
     @Inject
-    private PreferencesManager preferencesManager;
+    private PreferenceManager preferenceManager;
 
     @GET
     @Produces(APPLICATION_JSON)
@@ -64,9 +64,9 @@ public class PreferencesService extends Service {
                                     @QueryParam("filter")
                                     String filter) throws ServerException {
         if (filter == null) {
-            return preferencesManager.find(userId());
+            return preferenceManager.find(userId());
         }
-        return preferencesManager.find(userId(), filter);
+        return preferenceManager.find(userId(), filter);
     }
 
     @POST
@@ -82,7 +82,7 @@ public class PreferencesService extends Service {
         if (preferences == null) {
             throw new BadRequestException("Required non-null new preferences");
         }
-        preferencesManager.save(userId(), preferences);
+        preferenceManager.save(userId(), preferences);
     }
 
     @PUT
@@ -102,7 +102,7 @@ public class PreferencesService extends Service {
         if (preferences == null) {
             throw new BadRequestException("Required non-null preferences update");
         }
-        return preferencesManager.update(userId(), preferences);
+        return preferenceManager.update(userId(), preferences);
     }
 
     @DELETE
@@ -116,9 +116,9 @@ public class PreferencesService extends Service {
                    @ApiResponse(code = 500, message = "Couldn't remove preferences due to internal server error")})
     public void removePreferences(@ApiParam("Preferences to remove") List<String> names) throws ServerException {
         if (names == null || names.isEmpty()) {
-            preferencesManager.remove(userId());
+            preferenceManager.remove(userId());
         } else {
-            preferencesManager.remove(userId(), names);
+            preferenceManager.remove(userId(), names);
         }
     }
 

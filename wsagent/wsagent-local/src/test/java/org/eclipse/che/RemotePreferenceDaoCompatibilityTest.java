@@ -11,12 +11,9 @@
 package org.eclipse.che;
 
 import org.eclipse.che.api.core.rest.DefaultHttpJsonRequestFactory;
-import org.eclipse.che.api.user.server.PreferencesManager;
+import org.eclipse.che.api.user.server.PreferenceManager;
 import org.eclipse.che.api.user.server.PreferencesService;
 import org.eclipse.che.api.user.server.ProfileService;
-import org.eclipse.che.api.user.server.spi.PreferenceDao;
-import org.eclipse.che.api.user.server.spi.ProfileDao;
-import org.eclipse.che.api.user.server.spi.UserDao;
 import org.eclipse.che.commons.env.EnvironmentContext;
 import org.eclipse.che.commons.subject.Subject;
 import org.eclipse.che.commons.subject.SubjectImpl;
@@ -55,7 +52,7 @@ public class RemotePreferenceDaoCompatibilityTest {
     private static final Subject           TEST_SUBJECT       = new SubjectImpl("name", "id", "token", null, false);
 
     @Mock
-    private PreferencesManager preferenceManager;
+    private PreferenceManager preferenceManager;
 
     @InjectMocks
     private PreferencesService preferenceService;

@@ -35,7 +35,7 @@ import static java.util.Objects.requireNonNull;
  * @author Yevhenii Voevodin
  */
 @Singleton
-public class PreferencesManager {
+public class PreferenceManager {
 
     private static final Striped<Lock> UPDATE_REENTRANT_LOCKS = Striped.lazyWeakLock(32);
 

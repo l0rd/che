@@ -33,18 +33,18 @@ import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 
 /**
- * Tests for {@link PreferencesManager}.
+ * Tests for {@link PreferenceManager}.
  *
  * @author Yevhenii Voevodin.
  */
 @Listeners(MockitoTestNGListener.class)
-public class PreferencesManagerTest {
+public class PreferenceManagerTest {
 
     @Mock
     private PreferenceDao preferenceDao;
 
     @InjectMocks
-    private PreferencesManager preferencesManager;
+    private PreferenceManager preferenceManager;
 
     @Captor
     private ArgumentCaptor<Map<String, String>> preferencesCaptor;
@@ -63,7 +63,7 @@ public class PreferencesManagerTest {
         final Map<String, String> newPreferences = new HashMap<>();
         newPreferences.put("pKey5", "pValue5");
         newPreferences.put("pKey1", "new-value");
-        preferencesManager.update("user123", newPreferences);
+        preferenceManager.update("user123", newPreferences);
 
         // Checking
         verify(preferenceDao).setPreferences(anyString(), preferencesCaptor.capture());
@@ -86,7 +86,7 @@ public class PreferencesManagerTest {
         when(preferenceDao.getPreferences(any())).thenReturn(existingPreferences);
 
         // Removing
-        preferencesManager.remove("user123", asList("pKey1", "pKey5", "odd-pref-name"));
+        preferenceManager.remove("user123", asList("pKey1", "pKey5", "odd-pref-name"));
 
         // Checking
         verify(preferenceDao).setPreferences(anyString(), preferencesCaptor.capture());
@@ -100,7 +100,7 @@ public class PreferencesManagerTest {
         final Map<String, String> preferences = ImmutableMap.of("name", "value");
         when(preferenceDao.getPreferences("user123")).thenReturn(preferences);
 
-        assertEquals(preferencesManager.find("user123"), preferences);
+        assertEquals(preferenceManager.find("user123"), preferences);
     }
 
     @Test
@@ -108,44 +108,44 @@ public class PreferencesManagerTest {
         final Map<String, String> preferences = ImmutableMap.of("name", "value");
         when(preferenceDao.getPreferences("user123", "name.*")).thenReturn(preferences);
 
-        assertEquals(preferencesManager.find("user123", "name.*"), preferences);
+        assertEquals(preferenceManager.find("user123", "name.*"), preferences);
     }
 
     @Test(expectedExceptions = NullPointerException.class)
     public void getPreferencesShouldThrowNpeWhenUserIdIsNull() throws Exception {
-        preferencesManager.find(null);
+        preferenceManager.find(null);
     }
 
     @Test(expectedExceptions = NullPointerException.class)
     public void getPreferencesByUserAndFilterShouldThrowNpeWhenUserIdIsNull() throws Exception {
-        preferencesManager.find(null, "name.*");
+        preferenceManager.find(null, "name.*");
     }
 
     @Test(expectedExceptions = NullPointerException.class)
     public void shouldThrowNpeWhenRemovingPreferencesAndUserIdIsNull() throws Exception {
-        preferencesManager.remove(null);
+        preferenceManager.remove(null);
     }
 
     @Test
     public void shouldRemoveUserPreferences() throws Exception {
-        preferencesManager.remove("user123");
+        preferenceManager.remove("user123");
 
         verify(preferenceDao).remove("user123");
     }
 
     @Test(expectedExceptions = NullPointerException.class)
     public void shouldThrowNpeWhenSavePreferencesWithNullUser() throws Exception {
-        preferencesManager.save(null, Collections.emptyMap());
+        preferenceManager.save(null, Collections.emptyMap());
     }
 
     @Test(expectedExceptions = NullPointerException.class)
     public void shouldThrowNpeWhenSavePreferencesWithNullPreferences() throws Exception {
-        preferencesManager.save("user123", null);
+        preferenceManager.save("user123", null);
     }
 
     @Test
     public void shouldSavePreferences() throws Exception {
-        preferencesManager.save("user123", Collections.emptyMap());
+        preferenceManager.save("user123", Collections.emptyMap());
 
         verify(preferenceDao).setPreferences("user123", Collections.emptyMap());
     }
