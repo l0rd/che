@@ -58,7 +58,7 @@ public class LocalProfileDaoImpl implements ProfileDao {
             attributes.put("lastName", "Codenvy");
 
             ProfileImpl profile = new ProfileImpl("che", "che@eclipse.org", attributes);
-            profiles.put(profile.getId(), profile);
+            profiles.put(profile.getUserId(), profile);
         }
     }
 
@@ -72,7 +72,7 @@ public class LocalProfileDaoImpl implements ProfileDao {
         lock.writeLock().lock();
         try {
             // just replace existed profile
-            profiles.put(profile.getId(),  new ProfileImpl(profile));
+            profiles.put(profile.getUserId(), new ProfileImpl(profile));
         } finally {
             lock.writeLock().unlock();
         }
@@ -82,9 +82,9 @@ public class LocalProfileDaoImpl implements ProfileDao {
     public void update(ProfileImpl profile) throws NotFoundException {
         lock.writeLock().lock();
         try {
-            final Profile myProfile = profiles.get(profile.getId());
+            final Profile myProfile = profiles.get(profile.getUserId());
             if (myProfile == null) {
-                throw new NotFoundException(String.format("Profile with id '%s' not found", profile.getId()));
+                throw new NotFoundException(String.format("Profile with id '%s' not found", profile.getUserId()));
             }
             myProfile.getAttributes().clear();
             myProfile.getAttributes().putAll(profile.getAttributes());

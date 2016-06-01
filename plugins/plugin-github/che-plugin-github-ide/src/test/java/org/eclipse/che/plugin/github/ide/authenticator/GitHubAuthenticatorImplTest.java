@@ -150,7 +150,7 @@ public class GitHubAuthenticatorImplTest {
 
         when(appContext.getCurrentUser()).thenReturn(user);
         when(user.getProfile()).thenReturn(profile);
-        when(profile.getId()).thenReturn(userId);
+        when(profile.getUserId()).thenReturn(userId);
 
         gitHubAuthenticator.onAuthenticated(authStatus);
 
@@ -170,7 +170,7 @@ public class GitHubAuthenticatorImplTest {
         when(view.isGenerateKeysSelected()).thenReturn(false);
         when(appContext.getCurrentUser()).thenReturn(user);
         when(user.getProfile()).thenReturn(profile);
-        when(profile.getId()).thenReturn(userId);
+        when(profile.getUserId()).thenReturn(userId);
 
         gitHubAuthenticator.authenticate(null, getCallBack());
         gitHubAuthenticator.onAuthenticated(authStatus);
@@ -197,7 +197,7 @@ public class GitHubAuthenticatorImplTest {
 
         when(appContext.getCurrentUser()).thenReturn(user);
         when(user.getProfile()).thenReturn(profile);
-        when(profile.getId()).thenReturn(userId);
+        when(profile.getUserId()).thenReturn(userId);
 
         gitHubAuthenticator.authenticate(null, getCallBack());
         gitHubAuthenticator.onAuthenticated(authStatus);
@@ -227,7 +227,7 @@ public class GitHubAuthenticatorImplTest {
 
         when(appContext.getCurrentUser()).thenReturn(user);
         when(user.getProfile()).thenReturn(profile);
-        when(profile.getId()).thenReturn(userId);
+        when(profile.getUserId()).thenReturn(userId);
         when(dialogFactory.createMessageDialog(anyString(), anyString(), Matchers.<ConfirmCallback>anyObject())).thenReturn(messageDialog);
 
         gitHubAuthenticator.authenticate(null, getCallBack());
@@ -262,7 +262,7 @@ public class GitHubAuthenticatorImplTest {
 
         when(appContext.getCurrentUser()).thenReturn(user);
         when(user.getProfile()).thenReturn(profile);
-        when(profile.getId()).thenReturn(userId);
+        when(profile.getUserId()).thenReturn(userId);
         when(dialogFactory.createMessageDialog(anyString(), anyString(), Matchers.<ConfirmCallback>anyObject())).thenReturn(messageDialog);
         when(pair.getName()).thenReturn(GITHUB_HOST);
         when(pair.getService()).thenReturn(SshKeyManagerPresenter.VCS_SSH_SERVICE);

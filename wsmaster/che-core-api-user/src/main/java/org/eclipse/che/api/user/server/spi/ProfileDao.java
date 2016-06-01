@@ -65,7 +65,7 @@ public interface ProfileDao {
     /**
      * Finds profile by its id.
      *
-     * <p>Due to {@link Profile#getEmail()} and {@link Profile#getId()} definition
+     * <p>Due to {@link Profile#getEmail()} and {@link Profile#getUserId()} definition
      * returned profile must contain profile owner's {@link User#getEmail() email}
      * and {@link User#getId()} identifier.
      *

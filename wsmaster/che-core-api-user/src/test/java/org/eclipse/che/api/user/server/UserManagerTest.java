@@ -10,11 +10,11 @@
  *******************************************************************************/
 package org.eclipse.che.api.user.server;
 
-import org.eclipse.che.api.core.ConflictException;
-import org.eclipse.che.api.core.NotFoundException;
 import org.eclipse.che.api.core.ServerException;
-import org.eclipse.che.api.core.model.user.Profile;
 import org.eclipse.che.api.core.model.user.User;
+import org.eclipse.che.api.user.server.model.impl.ProfileImpl;
+import org.eclipse.che.api.user.server.spi.PreferenceDao;
+import org.eclipse.che.api.user.server.spi.ProfileDao;
 import org.eclipse.che.api.user.server.spi.UserDao;
 import org.eclipse.che.api.user.server.model.impl.UserImpl;
 import org.mockito.ArgumentCaptor;
@@ -49,13 +49,13 @@ import static org.testng.Assert.fail;
 public class UserManagerTest {
 
     @Mock
-    private UserDao            userDao;
+    private UserDao       userDao;
     @Mock
-    private ProfileManager     profileManager;
+    private ProfileDao    profileManager;
     @Mock
-    private PreferencesManager preferencesManager;
+    private PreferenceDao preferencesDao;
     @InjectMocks
-    private UserManager        manager;
+    private UserManager   manager;
 
     @Test
     public void shouldCreateProfileAndPreferencesOnUserCreation() throws Exception {
@@ -64,8 +64,8 @@ public class UserManagerTest {
         manager.create(user, false);
 
         verify(userDao).create(any(UserImpl.class));
-        verify(profileManager).create(any(Profile.class));
-        verify(preferencesManager).save(anyString(), anyMapOf(String.class, String.class));
+        verify(profileManager).create(any(ProfileImpl.class));
+        verify(preferencesDao).setPreferences(anyString(), anyMapOf(String.class, String.class));
     }
 
     @Test(dataProvider = "rollback")
@@ -87,7 +87,7 @@ public class UserManagerTest {
 
         // Verifying rollback
         verify(userDao).remove(userId);
-        verify(preferencesManager).remove(userId);
+        verify(preferencesDao).remove(userId);
         verify(profileManager).remove(userId);
     }
 
@@ -192,7 +192,7 @@ public class UserManagerTest {
         manager.remove("user123");
 
         verify(userDao).remove("user123");
-        verify(preferencesManager).remove("user123");
+        verify(preferencesDao).remove("user123");
         verify(profileManager).remove("user123");
     }
 
@@ -211,8 +211,8 @@ public class UserManagerTest {
                 // Preferences creation mocking
                 {() -> {
                     doThrow(new ServerException("error"))
-                            .when(preferencesManager)
-                            .save(anyString(), any());
+                            .when(preferencesDao)
+                            .setPreferences(anyString(), any());
                     return null;
                 }},
 

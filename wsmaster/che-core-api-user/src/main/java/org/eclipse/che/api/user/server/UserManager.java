@@ -18,6 +18,8 @@ import org.eclipse.che.api.core.ServerException;
 import org.eclipse.che.api.core.model.user.Profile;
 import org.eclipse.che.api.core.model.user.User;
 import org.eclipse.che.api.user.server.model.impl.ProfileImpl;
+import org.eclipse.che.api.user.server.spi.PreferenceDao;
+import org.eclipse.che.api.user.server.spi.ProfileDao;
 import org.eclipse.che.api.user.server.spi.UserDao;
 import org.eclipse.che.api.user.server.model.impl.UserImpl;
 import org.slf4j.Logger;
@@ -45,15 +47,15 @@ public class UserManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(UserManager.class);
 
-    private final UserDao            userDao;
-    private final ProfileManager     profileManager;
-    private final PreferencesManager preferencesManager;
+    private final UserDao       userDao;
+    private final ProfileDao    profileDao;
+    private final PreferenceDao preferencesDao;
 
     @Inject
-    public UserManager(UserDao userDao, ProfileManager profileManager, PreferencesManager preferencesManager) {
+    public UserManager(UserDao userDao, ProfileDao profileDao, PreferenceDao preferencesDao) {
         this.userDao = userDao;
-        this.profileManager = profileManager;
-        this.preferencesManager = preferencesManager;
+        this.profileDao = profileDao;
+        this.preferencesDao = preferencesDao;
     }
 
     /**
@@ -77,9 +79,9 @@ public class UserManager {
                                            newUser.getAliases());
         try {
             userDao.create(user);
-            profileManager.create(new ProfileImpl(user.getId(), newUser.getEmail()));
-            preferencesManager.save(user.getId(), ImmutableMap.of("temporary", Boolean.toString(isTemporary),
-                                                                  "codenvy:created", Long.toString(currentTimeMillis())));
+            profileDao.create(new ProfileImpl(user.getId(), newUser.getEmail()));
+            preferencesDao.setPreferences(user.getId(), ImmutableMap.of("temporary", Boolean.toString(isTemporary),
+                                                                        "codenvy:created", Long.toString(currentTimeMillis())));
         } catch (ConflictException | ServerException x) {
             // optimistic rollback(won't remove profile if userDao.remove failed)
             // remove operation is not-found-safe so if any exception
@@ -87,8 +89,8 @@ public class UserManager {
             // NOTE: this logic must be replaced with transaction management
             try {
                 userDao.remove(user.getId());
-                profileManager.remove(user.getId());
-                preferencesManager.remove(user.getId());
+                profileDao.remove(user.getId());
+                preferencesDao.remove(user.getId());
             } catch (ConflictException | ServerException rollbackEx) {
                 LOG.error(format("An attempt to clean up resources due to user creation failure was unsuccessful." +
                                  "Now the system may be in inconsistent state. " +
@@ -206,8 +208,8 @@ public class UserManager {
      */
     public void remove(String id) throws ServerException, ConflictException {
         requireNonNull(id, "Required non-null id");
-        profileManager.remove(id);
-        preferencesManager.remove(id);
+        profileDao.remove(id);
+        preferencesDao.remove(id);
         userDao.remove(id);
     }
 }

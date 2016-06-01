@@ -90,7 +90,7 @@ public class DataObjectsTest {
                                                                     "attribute2", "value2",
                                                                     "attribute3", "value3"));
 
-        assertEquals(profile.getId(), "user123");
+        assertEquals(profile.getUserId(), "user123");
         assertEquals(profile.getEmail(), "user@company.com");
         assertEquals(profile.getAttributes(), ImmutableMap.of("attribute1", "value1",
                                                               "attribute2", "value2",
@@ -121,7 +121,7 @@ public class DataObjectsTest {
         final ProfileImpl copy = new ProfileImpl(profile);
         profile.getAttributes().put("new-attribute", "new-value");
 
-        assertEquals(copy.getId(), "user123");
+        assertEquals(copy.getUserId(), "user123");
         assertEquals(copy.getEmail(), "user@company.com");
         assertEquals(copy.getAttributes(), ImmutableMap.of("attribute1", "value1",
                                                            "attribute2", "value2",

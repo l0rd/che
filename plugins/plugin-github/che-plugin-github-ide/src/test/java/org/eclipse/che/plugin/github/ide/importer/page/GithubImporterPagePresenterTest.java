@@ -461,7 +461,7 @@ public class GithubImporterPagePresenterTest {
 
         when(appContext.getCurrentUser()).thenReturn(user);
         when(user.getProfile()).thenReturn(profile);
-        when(profile.getId()).thenReturn(userId);
+        when(profile.getUserId()).thenReturn(userId);
 
 
         final Throwable exception = mock(UnauthorizedException.class);
@@ -515,7 +515,7 @@ public class GithubImporterPagePresenterTest {
 
         when(appContext.getCurrentUser()).thenReturn(user);
         when(user.getProfile()).thenReturn(profile);
-        when(profile.getId()).thenReturn(userId);
+        when(profile.getUserId()).thenReturn(userId);
 
         presenter.onLoadRepoClicked();
 

@@ -110,8 +110,8 @@ describe('CheProfile', function () {
       // fetch profile
       factory.setAttributes(testAttributes);
 
-      // expecting a POST
-      httpBackend.expecPUT('/api/profile/attributes');
+      // expecting a PUT
+      httpBackend.expectPUT('/api/profile/attributes');
 
       // flush command
       httpBackend.flush();

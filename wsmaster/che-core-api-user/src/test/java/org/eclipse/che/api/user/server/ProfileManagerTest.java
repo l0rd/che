@@ -40,9 +40,9 @@ public class ProfileManagerTest {
     @Test
     public void shouldGetProfileById() throws Exception {
         final ProfileImpl profile = new ProfileImpl("user123", "test@email.com");
-        when(profileDao.getById(profile.getId())).thenReturn(profile);
+        when(profileDao.getById(profile.getUserId())).thenReturn(profile);
 
-        assertEquals(profile, profileManager.getById(profile.getId()));
+        assertEquals(profile, profileManager.getById(profile.getUserId()));
     }
 
     @Test(expectedExceptions = NullPointerException.class)

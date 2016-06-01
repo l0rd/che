@@ -24,12 +24,12 @@ import java.util.Map;
 @DTO
 public interface ProfileDto extends Profile {
 
-    void setId(String id);
+    void setUserId(String id);
 
     @ApiModelProperty("Profile ID")
-    String getId();
+    String getUserId();
 
-    ProfileDto withId(String id);
+    ProfileDto withUserId(String id);
 
     @ApiModelProperty("Profile attributes")
     Map<String, String> getAttributes();

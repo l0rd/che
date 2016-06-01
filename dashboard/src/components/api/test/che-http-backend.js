@@ -285,7 +285,7 @@ export class CheHttpBackend {
    * @param attributes
    */
   setAttributes(attributes) {
-    this.httpBackend.when('POST', '/api/profile').respond(attributes);
+    this.httpBackend.when('PUT', '/api/profile/attributes').respond(attributes);
     this.defaultProfile.attributes = attributes;
   }
 

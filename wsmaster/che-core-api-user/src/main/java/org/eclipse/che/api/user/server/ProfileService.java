@@ -165,7 +165,7 @@ public class ProfileService extends Service {
 
     private static ProfileDto asDto(Profile profile) {
         return DtoFactory.newDto(ProfileDto.class)
-                         .withId(profile.getId())
+                         .withUserId(profile.getUserId())
                          .withEmail(profile.getEmail())
                          .withAttributes(profile.getAttributes());
     }

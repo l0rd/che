@@ -41,11 +41,11 @@ public class ProfileImpl implements Profile {
     }
 
     public ProfileImpl(Profile profile) {
-        this(profile.getId(), profile.getEmail(), profile.getAttributes());
+        this(profile.getUserId(), profile.getEmail(), profile.getAttributes());
     }
 
     @Override
-    public String getId() {
+    public String getUserId() {
         return id;
     }
 

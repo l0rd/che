@@ -92,7 +92,7 @@ public class ProfileServiceTest {
 
         assertEquals(response.getStatusCode(), 200);
         final ProfileDto profileDto = unwrapDto(response, ProfileDto.class);
-        assertEquals(profileDto.getId(), SUBJECT.getUserId());
+        assertEquals(profileDto.getUserId(), SUBJECT.getUserId());
         assertEquals(profileDto.getEmail(), SUBJECT.getUserName() + "@codenvy.com");
     }
 
@@ -105,7 +105,7 @@ public class ProfileServiceTest {
 
         assertEquals(response.getStatusCode(), 200);
         final ProfileDto profileDto = unwrapDto(response, ProfileDto.class);
-        assertEquals(profileDto.getId(), SUBJECT.getUserId());
+        assertEquals(profileDto.getUserId(), SUBJECT.getUserId());
         assertEquals(profileDto.getEmail(), SUBJECT.getUserName() + "@codenvy.com");
     }
 

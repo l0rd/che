@@ -27,10 +27,9 @@ public interface Profile {
 
     /**
      * Returns the identifier of the user {@link User#getId()}
-     * whom this profile belongs to, which must be also considered
-     * as profile identifier.
+     * whom this profile belongs to.
      */
-    String getId();
+    String getUserId();
 
     /**
      * Returns the email of the user {@link User#getEmail()} whom this

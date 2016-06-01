@@ -40,7 +40,7 @@ public interface PreferenceDao {
      *
      * <p>Note that this method must always return upgradable map, thus it may be used as:
      * <pre>{@code
-     *      Map<String, String> prefs = spi.getPreferences("user123");
+     *      Map<String, String> prefs = dao.getPreferences("user123");
      *      prefs.put("key", "secret");
      *      spi.setPreferences("user123", prefs);
      * }</pre>

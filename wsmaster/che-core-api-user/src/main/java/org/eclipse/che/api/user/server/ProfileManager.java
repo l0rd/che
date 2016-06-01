@@ -66,7 +66,7 @@ public class ProfileManager {
      * @throws NullPointerException
      *         when profile is null
      * @throws ConflictException
-     *         when profile for the user {@code profile.getId()} already exists
+     *         when profile for the user {@code profile.getUserId()} already exists
      * @throws ServerException
      *         when any other error occurs
      */
@@ -86,7 +86,7 @@ public class ProfileManager {
      * @throws NullPointerException
      *         when {@code profile}  is null
      * @throws NotFoundException
-     *         when there is no profile for the user with the id {@code profile.getId()}
+     *         when there is no profile for the user with the id {@code profile.getUserId()}
      * @throws ServerException
      *         when any other error occurs
      */

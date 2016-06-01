@@ -57,7 +57,7 @@ public class ProfileLinksInjectorTest {
     @Test
     public void shouldInjectProfileLinks() throws Exception {
         final ProfileDto profileDto = DtoFactory.newDto(ProfileDto.class)
-                                                .withId("user123")
+                                                .withUserId("user123")
                                                 .withEmail("user@codenvy.com");
 
         linksInjector.injectLinks(profileDto, serviceContext);

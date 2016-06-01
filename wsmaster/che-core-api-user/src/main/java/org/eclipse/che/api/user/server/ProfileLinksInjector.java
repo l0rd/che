@@ -49,7 +49,7 @@ public class ProfileLinksInjector {
         links.add(createLink(HttpMethod.GET,
                              uriBuilder.clone()
                                        .path(ProfileService.class, "getById")
-                                       .build(profileDto.getId())
+                                       .build(profileDto.getUserId())
                                        .toString(),
                              null,
                              APPLICATION_JSON,
@@ -65,7 +65,7 @@ public class ProfileLinksInjector {
         links.add(createLink(HttpMethod.DELETE,
                              uriBuilder.clone()
                                        .path(ProfileService.class, "removeAttributes")
-                                       .build(profileDto.getId())
+                                       .build(profileDto.getUserId())
                                        .toString(),
                              APPLICATION_JSON,
                              APPLICATION_JSON,
@@ -73,7 +73,7 @@ public class ProfileLinksInjector {
         links.add(createLink(HttpMethod.PUT,
                              uriBuilder.clone()
                                        .path(ProfileService.class, "updateAttributesById")
-                                       .build(profileDto.getId())
+                                       .build(profileDto.getUserId())
                                        .toString(),
                              APPLICATION_JSON,
                              APPLICATION_JSON,
