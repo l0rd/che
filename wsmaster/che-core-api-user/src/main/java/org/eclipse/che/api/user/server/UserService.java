@@ -289,7 +289,7 @@ public class UserService extends Service {
     private User fromToken(String token) throws UnauthorizedException, ConflictException {
         final String email = tokenValidator.validateToken(token);
         final int atIdx = email.indexOf('@');
-        // Getting all the characters before '@' e.g. user@codenvy.com -> user
+        // Getting all the characters before '@' e.g. user@eclipse.org -> user
         final String name = atIdx == -1 ? email : email.substring(0, atIdx);
         return newDto(UserDto.class).withEmail(email).withName(name);
     }
