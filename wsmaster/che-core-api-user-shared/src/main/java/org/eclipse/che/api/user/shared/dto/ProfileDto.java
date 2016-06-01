@@ -12,14 +12,20 @@ package org.eclipse.che.api.user.shared.dto;
 
 import org.eclipse.che.api.core.model.user.Profile;
 import org.eclipse.che.api.core.rest.shared.dto.Link;
+import org.eclipse.che.dto.server.DtoFactory;
 import org.eclipse.che.dto.shared.DTO;
+
 import io.swagger.annotations.ApiModelProperty;
 
 import java.util.List;
 import java.util.Map;
 
 /**
- * @author andrew00x
+ * This object used for transporting profile data to/from client.
+ *
+ * @author Yevhenii Voevodin
+ * @see Profile
+ * @see DtoFactory
  */
 @DTO
 public interface ProfileDto extends Profile {

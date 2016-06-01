@@ -12,13 +12,19 @@ package org.eclipse.che.api.user.shared.dto;
 
 import org.eclipse.che.api.core.model.user.User;
 import org.eclipse.che.api.core.rest.shared.dto.Link;
+import org.eclipse.che.dto.server.DtoFactory;
 import org.eclipse.che.dto.shared.DTO;
+
 import io.swagger.annotations.ApiModelProperty;
 
 import java.util.List;
 
 /**
+ * This object used for transporting user data to/from client.
+ *
  * @author Yevhenii Voevodin
+ * @see User
+ * @see DtoFactory
  */
 @DTO
 public interface UserDto extends User {

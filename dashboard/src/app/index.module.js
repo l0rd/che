@@ -43,11 +43,11 @@ initModule.config(['$routeProvider', ($routeProvider) => {
       var deferred = $q.defer();
 
       cheUser.fetchUser().then(() => {
-        let profilePreferences = chePreferences.getPreferences();
-        if (profilePreferences && profilePreferences.$resolved) {
+        let preferences = chePreferences.getPreferences();
+        if (preferences && preferences.$resolved) {
           deferred.resolve();
         } else {
-          profilePreferences.$promise.then(() => {
+          preferences.$promise.then(() => {
             deferred.resolve();
           }, (error) => {
             deferred.reject(error);
@@ -69,11 +69,11 @@ initModule.config(['$routeProvider', ($routeProvider) => {
       var deferred = $q.defer();
 
       cheUser.fetchUser().then(() => {
-        let profilePreferences = chePreferences.getPreferences();
-        if (profilePreferences && profilePreferences.$resolved) {
+        let preferences = chePreferences.getPreferences();
+        if (preferences && preferences.$resolved) {
           deferred.resolve();
         } else {
-          profilePreferences.$promise.then(() => {
+          preferences.$promise.then(() => {
             deferred.resolve();
           }, (error) => {
             deferred.reject(error);
