@@ -22,7 +22,23 @@ export class ShareWorkspaceController {
    * Default constructor that is using resource
    * @ngInject for Dependency injection
    */
-  constructor(cheWorkspace) {
+  constructor(cheWorkspace, $mdConstant) {
+    "ngInject";
+
+    this.cheWorkspace = cheWorkspace;
+
+    this.separators = [$mdConstant.KEY_CODE.ENTER, $mdConstant.KEY_CODE.COMMA, $mdConstant.KEY_CODE.SPACE];
+    this.emails = [];
+    this.users = [];
+
+    this.actions = ['read', 'use'];
+  }
+
+  shareWorkspace() {
+    //getUser by alias
+
+    //form permissions
+
+    //store permissions
   }
 }
-ShareWorkspaceController.$inject = ['cheWorkspace'];

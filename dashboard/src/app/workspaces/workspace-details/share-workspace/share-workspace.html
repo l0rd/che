@@ -17,6 +17,34 @@
     from Codenvy S.A..
 
 -->
-<div>
-  123
-</div>
+<md-content class="workspace-users-content">
+  <div layout="row" flex>
+    <form flex layout="column" name="workspaceUsersForm">
+      <md-chips flex
+        name="emails"
+        ng-model="shareWorkspaceController.emails"
+        md-separator-keys="shareWorkspaceController.separators"
+        secondary-placeholder="Enter user emails">
+      </md-chips>
+    </form>
+    <div ng-if="workspaceUsersForm.$dirty">
+      <div ng-message="md-max-chips">You reached the maximum amount of chips</div>
+    </div>
+    <div flex="none" flex-offset="5" layout="column" layout-align="end end">
+      <che-button-primary
+        ng-disabled="shareWorkspaceController.emails.length === 0"
+        che-button-title="Share" name="shareButton"
+        ng-click="shareWorkspaceController.shareWorkspace()"></che-button-primary>
+    </div>
+  </div>
+
+  <div flex layout="row" layout-align="end center">
+    <che-list flex ng-if="shareWorkspaceController.users && shareWorkspaceController.users.length > 0">
+      <!--<che-user-item ng-repeat="user in shareWorkspaceController.users" flex-gt-sm="100" flex="33"
+                        che-user-item-workspace-id="workspaceDetailsProjectsCtrl.workspaceId"
+                        che-project-item-workspace-name="workspaceDetailsProjectsCtrl.workspace.config.name"
+                        che-project-item-project="project"
+                        che-profile-creation-date="workspaceDetailsProjectsCtrl.profileCreationDate"></che-user-item>-->
+    </che-list>
+  </div>
+</md-content>
