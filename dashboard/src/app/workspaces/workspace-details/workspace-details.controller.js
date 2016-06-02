@@ -20,7 +20,7 @@ export class WorkspaceDetailsCtrl {
    * Default constructor that is using resource injection
    * @ngInject for Dependency injection
    */
-  constructor($rootScope, $route, $location, cheWorkspace, $mdDialog, cheNotification, ideSvc, $log) {
+  constructor($rootScope, $route, $location, cheWorkspace, $mdDialog, cheNotification, ideSvc, $log, workspaceDetailsService) {
     this.$rootScope = $rootScope;
     this.cheNotification = cheNotification;
     this.cheWorkspace = cheWorkspace;
@@ -28,6 +28,7 @@ export class WorkspaceDetailsCtrl {
     this.$location = $location;
     this.ideSvc = ideSvc;
     this.$log = $log;
+    this.workspaceDetailsService = workspaceDetailsService;
 
     this.workspaceDetails = {};
     this.workspaceId = $route.current.params.workspaceId;
@@ -54,6 +55,13 @@ export class WorkspaceDetailsCtrl {
     this.showShowMore = false;
 
     this.cheWorkspace.fetchWorkspaces();
+
+    workspaceDetailsService.addSection('Projects', '<workspace-details-projects></workspace-details-projects>', 'icon-ic_inbox_24px');
+    workspaceDetailsService.addSection('Share', '<share-workspace></share-workspace>', 'icon-ic_folder_shared_24px');
+  }
+
+  getSections() {
+    return this.workspaceDetailsService.getSections();
   }
 
   //Update the workspace data to be displayed.

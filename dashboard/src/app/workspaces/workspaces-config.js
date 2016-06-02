@@ -18,6 +18,7 @@ import {UsageChart} from './list-workspaces/workspace-item/usage-chart.directive
 import {WorkspaceItemCtrl} from './list-workspaces/workspace-item/workspace-item.controller';
 import {WorkspaceDetailsCtrl} from './workspace-details/workspace-details.controller';
 import {WorkspaceDetailsProjectsCtrl} from './workspace-details/workspace-projects/workspace-details-projects.controller';
+import {WorkspaceDetailsService} from './workspace-details/workspace-details.service.js';
 import {ExportWorkspaceController} from './workspace-details/export-workspace/export-workspace.controller';
 import {ExportWorkspace} from './workspace-details/export-workspace/export-workspace.directive';
 import {ExportWorkspaceDialogController} from  './workspace-details/export-workspace/dialog/export-workspace-dialog.controller';
@@ -39,6 +40,10 @@ import {WorkspaceStatusIndicator} from './workspace-status-indicator/workspace-s
 import {CheStackLibraryFilterCtrl} from './create-workspace/select-stack/stack-library/stack-library-filter/che-stack-library-filter.controller';
 import {CheStackLibraryFilter}     from './create-workspace/select-stack/stack-library/stack-library-filter/che-stack-library-filter.directive';
 import {CreateProjectStackLibrarySelectedStackFilter} from './create-workspace/select-stack/stack-library/create-project-stack-library-selected-stack.filter.js';
+
+import {ShareWorkspaceController} from './workspace-details/share-workspace/share-workspace.controller';
+import {ShareWorkspace} from './workspace-details/share-workspace/share-workspace.directive';
+
 /**
  * @ngdoc controller
  * @name workspaces:WorkspacesConfig
@@ -63,6 +68,7 @@ export class WorkspacesConfig {
 
     register.controller('WorkspaceDetailsProjectsCtrl', WorkspaceDetailsProjectsCtrl);
     register.directive('workspaceDetailsProjects', WorkspaceDetailsProjects);
+    register.service('workspaceDetailsService', WorkspaceDetailsService);
 
     register.controller('ExportWorkspaceDialogController', ExportWorkspaceDialogController);
     register.controller('ExportWorkspaceController', ExportWorkspaceController);
@@ -89,6 +95,9 @@ export class WorkspacesConfig {
 
     register.controller('CheStackLibraryFilterCtrl', CheStackLibraryFilterCtrl);
     register.directive('cheStackLibraryFilter', CheStackLibraryFilter);
+
+    register.controller('ShareWorkspaceController', ShareWorkspaceController);
+    register.directive('shareWorkspace', ShareWorkspace);
 
     // config routes
     register.app.config(function ($routeProvider) {
