@@ -333,9 +333,15 @@ update_che_server() {
     CHE_VERSION=${DEFAULT_CHE_VERSION}
   fi
 
-  info "ECLIPSE CHE: PULLING IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}"
-  execute_command_with_progress extended docker pull ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}
-  info "ECLIPSE CHE: IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION} INSTALLED"
+  CURRENT_IMAGE=$(docker images -q ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION})
+
+  if [ "${CURRENT_IMAGE}" != "" ]; then 
+    info "ECLIPSE CHE: ALREADY HAVE IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}"
+  else 
+    info "ECLIPSE CHE: PULLING IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}"
+    execute_command_with_progress extended docker pull ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}
+    info "ECLIPSE CHE: IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION} INSTALLED"
+  fi
 }
 
 # See: https://sipb.mit.edu/doc/safe-shell/
