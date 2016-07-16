@@ -18,12 +18,12 @@ init_global_variables() {
   DOCKER_INSTALL_TYPE=$(get_docker_install_type)
 
   # User configurable variables
+  DEFAULT_DOCKER_HOST_IP=$(get_docker_host_ip)
   DEFAULT_CHE_HOSTNAME=$(get_che_hostname)
   DEFAULT_CHE_PORT="8080"
   DEFAULT_CHE_VERSION="latest"
   DEFAULT_CHE_RESTART_POLICY="always"
   DEFAULT_CHE_USER="root"
-  DEFAULT_DOCKER_HOST_IP=$(get_docker_host_ip)
   DEFAULT_CHE_LOG_LEVEL="info"
   DEFAULT_CHE_DATA_FOLDER="/home/user/che"
 
@@ -32,7 +32,7 @@ init_global_variables() {
   CHE_VERSION=${CHE_VERSION:-${DEFAULT_CHE_VERSION}}
   CHE_RESTART_POLICY=${CHE_RESTART_POLICY:-${DEFAULT_CHE_RESTART_POLICY}}
   CHE_USER=${CHE_USER:-${DEFAULT_CHE_USER}}
-  DOCKER_HOST_IP=${DOCKER_HOST_IP:-${DEFAULT_DOCKER_HOST_IP}}
+  CHE_HOST_IP=${DOCKER_HOST_IP:-${DEFAULT_DOCKER_HOST_IP}}
   CHE_LOG_LEVEL=${CHE_LOG_LEVEL:-${DEFAULT_CHE_LOG_LEVEL}}
   CHE_DATA_FOLDER=${CHE_DATA_FOLDER:-${DEFAULT_CHE_DATA_FOLDER}}
 
@@ -103,7 +103,7 @@ print_debug_info() {
   debug "CHE_VERSION               = ${CHE_VERSION}"
   debug "CHE_RESTART_POLICY        = ${CHE_RESTART_POLICY}"
   debug "CHE_USER                  = ${CHE_USER}"
-  debug "DOCKER_HOST_IP            = ${DOCKER_HOST_IP}"
+  debug "CHE_HOST_IP               = ${DOCKER_HOST_IP}"
   debug "CHE_LOG_LEVEL             = ${CHE_LOG_LEVEL}"
   debug "CHE_HOSTNAME              = ${CHE_HOSTNAME}"
   debug "CHE_DATA_FOLDER           = ${CHE_DATA_FOLDER}"
@@ -140,8 +140,12 @@ get_docker_host_ip() {
 
 get_che_hostname() {
   INSTALL_TYPE=$(get_docker_install_type)
+  CHE_IP=$(get_docker_host_ip)
+
   if [ "${INSTALL_TYPE}" = "boot2docker" ]; then
-    get_docker_host_ip
+    echo "${CHE_IP}"
+  elif [[ "${INSTALL_TYPE}" = "moby" && "${CHE_IP}" = "10.0.75.2" ]]; then
+    echo "${CHE_IP}"
   else
     echo "localhost"
   fi
@@ -194,7 +198,7 @@ wait_until_container_is_running() {
 }
 
 server_is_booted() {
-  if ! curl -v http://"${DOCKER_HOST_IP}":"${CHE_PORT}"/dashboard > /dev/null 2>&1 ; then
+  if ! curl -v http://"${CHE_HOST_IP}":"${CHE_PORT}"/dashboard > /dev/null 2>&1 ; then
     return 1
   else
     return 0
@@ -239,7 +243,8 @@ start_che_server() {
     error_exit "A container named \"${CHE_SERVER_CONTAINER_NAME}\" already exists. Please remove it manually (docker rm -f ${CHE_SERVER_CONTAINER_NAME}) and try again."
   fi
 
-  info "------------------------------------"
+  update_che_server
+
   info "ECLIPSE CHE: CONTAINER STARTING"
   docker run -d --name "${CHE_SERVER_CONTAINER_NAME}" \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -250,7 +255,7 @@ start_che_server() {
     --restart="${CHE_RESTART_POLICY}" \
     --user="${CHE_USER}" ${CHE_CONF_ARGS} \
     "${CHE_SERVER_IMAGE_NAME}":"${CHE_VERSION}" \
-                --remote:"${DOCKER_HOST_IP}" \
+                --remote:"${CHE_HOST_IP}" \
                 -s:uid \
                 run > /dev/null 2>&1
 
@@ -259,16 +264,42 @@ start_che_server() {
     error_exit "ECLIPSE CHE: Timeout waiting Che container to start."
   fi
 
-  info "ECLIPSE CHE: SERVER BOOTING"
-  info "ECLIPSE CHE: See logs at \"docker logs -f che\""
+  info "ECLIPSE CHE: SERVER LOGS AT \"docker logs -f che\""
+  info "ECLIPSE CHE: SERVER BOOTING..."
   wait_until_server_is_booted 20
+
   if server_is_booted; then
     info "ECLIPSE CHE: BOOTED AND REACHABLE"
     info "ECLIPSE CHE: http://${CHE_HOSTNAME}:${CHE_PORT}"
-    info "------------------------------------"
   else
     error_exit "ECLIPSE CHE: Timeout waiting Che server to boot. Run \"docker logs che\" to see the logs."
   fi
+}
+
+execute_command_with_progress() {
+  local progress=$1
+  local command=$2
+  shift 2
+      
+  local pid=""
+  printf "\n"     
+
+  case "$progress" in
+    extended)
+      $command "$@"  
+      ;;
+    basic|*)
+      $command "$@" &>/dev/null &
+      pid=$!
+      while kill -0 "$pid" >/dev/null 2>&1; do
+        printf "#"
+        sleep 10
+      done
+      wait $pid # return pid's exit code
+      printf "\n"
+    ;;
+  esac
+  printf "\n"     
 }
 
 stop_che_server() {
@@ -277,14 +308,12 @@ stop_che_server() {
     info "ECLIPSE CHE: CONTAINER IS NOT RUNNING. NOTHING TO DO."
     info "-------------------------------------------------------"
   else
-    info "---------------------------------------"
-    info "ECLIPSE CHE: STOPPING SERVER"
+    info "ECLIPSE CHE: STOPPING SERVER..."
     docker exec ${CHE_SERVER_CONTAINER_NAME} /home/user/che/bin/che.sh -c stop > /dev/null 2>&1
     sleep 5
     info "ECLIPSE CHE: REMOVING CONTAINER"
     docker rm -f che > /dev/null 2>&1
     info "ECLIPSE CHE: STOPPED"
-    info "---------------------------------------"
   fi
 }
 
@@ -300,12 +329,9 @@ update_che_server() {
     CHE_VERSION=${DEFAULT_CHE_VERSION}
   fi
 
-  info "---------------------------------------"
-  info "ECLIPSE CHE: PULLING ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION} FROM REMOTE REGISTRY"
-  docker pull ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION} > /dev/null 2>&1
-  info "ECLIPSE CHE: IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION} UPDATED"
-  info "PLEASE RESTART CHE TO COMPLETE THE UPDATE"
-  info "---------------------------------------"
+  info "ECLIPSE CHE: PULLING IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}"
+  execute_command_with_progress extended docker pull ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}
+  info "ECLIPSE CHE: IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION} INSTALLED"
 }
 
 # See: https://sipb.mit.edu/doc/safe-shell/
