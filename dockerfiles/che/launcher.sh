@@ -40,7 +40,7 @@ init_global_variables() {
   #   - empty if CHE_CONF_FOLDER is not set
   #   - -v ${CHE_CONF_FOLDER}:/conf -e "CHE_LOCAL_CONF_DIR=/conf" if CHE_CONF_FOLDER is set
   CHE_CONF_ARGS=${CHE_CONF_FOLDER:+-v ${CHE_CONF_FOLDER}:/conf -e \"CHE_LOCAL_CONF_DIR=/conf\"}
-
+  CHE_LOCAL_BINARY_ARGS=${CHE_LOCAL_BINARY:+-v ${CHE_LOCAL_BINARY}:/home/user/che}
 
   USAGE="
 Usage:
@@ -95,7 +95,7 @@ print_debug_info() {
   VAL=$(if che_container_is_running;then echo "YES"; else echo "NO"; fi)
   debug "CHE CONTAINER IS RUNNING? ${VAL}"
   VAL=$(if che_container_is_stopped;then echo "YES"; else echo "NO"; fi)
-  debug "CHE CONTAINER IS STOPED?  ${VAL}"
+  debug "CHE CONTAINER IS STOPPED? ${VAL}"
   VAL=$(if server_is_booted;then echo "YES"; else echo "NO"; fi)
   debug "CHE SERVER IS BOOTED?     ${VAL}"
   debug ""
@@ -103,11 +103,13 @@ print_debug_info() {
   debug "CHE_VERSION               = ${CHE_VERSION}"
   debug "CHE_RESTART_POLICY        = ${CHE_RESTART_POLICY}"
   debug "CHE_USER                  = ${CHE_USER}"
-  debug "CHE_HOST_IP               = ${DOCKER_HOST_IP}"
+  debug "CHE_HOST_IP               = ${CHE_HOST_IP}"
   debug "CHE_LOG_LEVEL             = ${CHE_LOG_LEVEL}"
   debug "CHE_HOSTNAME              = ${CHE_HOSTNAME}"
   debug "CHE_DATA_FOLDER           = ${CHE_DATA_FOLDER}"
   debug "CHE_CONF_FOLDER           = ${CHE_CONF_FOLDER:-not set}"
+  debug "CHE_LOCAL_BINARY          = ${CHE_LOCAL_BINARY:-not set}"
+  debug ""
   debug "---------------------------------------"
   debug "---------------------------------------"
   debug "---------------------------------------"
@@ -251,13 +253,15 @@ start_che_server() {
     -v "${CHE_DATA_FOLDER}"/lib:/home/user/che/lib-copy \
     -v "${CHE_DATA_FOLDER}"/workspaces:/home/user/che/workspaces \
     -v "${CHE_DATA_FOLDER}"/storage:/home/user/che/storage \
+    ${CHE_LOCAL_BINARY_ARGS} \
     -p "${CHE_PORT}":8080 \
     --restart="${CHE_RESTART_POLICY}" \
-    --user="${CHE_USER}" ${CHE_CONF_ARGS} \
+    --user="${CHE_USER}" \
+    ${CHE_CONF_ARGS} \
     "${CHE_SERVER_IMAGE_NAME}":"${CHE_VERSION}" \
                 --remote:"${CHE_HOST_IP}" \
                 -s:uid \
-                run > /dev/null 2>&1
+                run > /dev/null # 2>&1
 
   wait_until_container_is_running 10
   if ! che_container_is_running; then
