@@ -32,7 +32,7 @@ init_global_variables() {
   CHE_VERSION=${CHE_VERSION:-${DEFAULT_CHE_VERSION}}
   CHE_RESTART_POLICY=${CHE_RESTART_POLICY:-${DEFAULT_CHE_RESTART_POLICY}}
   CHE_USER=${CHE_USER:-${DEFAULT_CHE_USER}}
-  CHE_HOST_IP=${DOCKER_HOST_IP:-${DEFAULT_DOCKER_HOST_IP}}
+  CHE_HOST_IP=${CHE_HOST_IP:-${DEFAULT_DOCKER_HOST_IP}}
   CHE_LOG_LEVEL=${CHE_LOG_LEVEL:-${DEFAULT_CHE_LOG_LEVEL}}
   CHE_DATA_FOLDER=${CHE_DATA_FOLDER:-${DEFAULT_CHE_DATA_FOLDER}}
 
@@ -245,7 +245,13 @@ start_che_server() {
     error_exit "A container named \"${CHE_SERVER_CONTAINER_NAME}\" already exists. Please remove it manually (docker rm -f ${CHE_SERVER_CONTAINER_NAME}) and try again."
   fi
 
-  update_che_server
+  CURRENT_IMAGE=$(docker images -q ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION})
+
+  if [ "${CURRENT_IMAGE}" != "" ]; then 
+    info "ECLIPSE CHE: ALREADY HAVE IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}"
+  else 
+    update_che_server
+  fi
 
   info "ECLIPSE CHE: CONTAINER STARTING"
   docker run -d --name "${CHE_SERVER_CONTAINER_NAME}" \
@@ -334,15 +340,9 @@ update_che_server() {
     CHE_VERSION=${DEFAULT_CHE_VERSION}
   fi
 
-  CURRENT_IMAGE=$(docker images -q ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION})
-
-  if [ "${CURRENT_IMAGE}" != "" ]; then 
-    info "ECLIPSE CHE: ALREADY HAVE IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}"
-  else 
-    info "ECLIPSE CHE: PULLING IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}"
-    execute_command_with_progress extended docker pull ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}
-    info "ECLIPSE CHE: IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION} INSTALLED"
-  fi
+  info "ECLIPSE CHE: PULLING IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}"
+  execute_command_with_progress extended docker pull ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION}
+  info "ECLIPSE CHE: IMAGE ${CHE_SERVER_IMAGE_NAME}:${CHE_VERSION} INSTALLED"
 }
 
 # See: https://sipb.mit.edu/doc/safe-shell/
