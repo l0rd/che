@@ -261,6 +261,7 @@ start_che_server() {
     "${CHE_SERVER_IMAGE_NAME}":"${CHE_VERSION}" \
                 --remote:"${CHE_HOST_IP}" \
                 -s:uid \
+                -s:client \
                 run > /dev/null # 2>&1
 
   wait_until_container_is_running 10
