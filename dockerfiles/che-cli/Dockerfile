@@ -32,7 +32,7 @@ RUN set -x \
   && curl -sL "https://${DOCKER_BUCKET}/builds/Linux/x86_64/docker-$DOCKER_VERSION" \
   > /usr/bin/docker; chmod +x /usr/bin/docker
 
-ADD files-to-install che
+COPY files-to-install che
 
 COPY /install.sh /bin/install.sh
 
