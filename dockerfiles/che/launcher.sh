@@ -9,7 +9,7 @@ init_logging() {
 
 init_global_variables() {
 
-  CHE_SERVER_CONTAINER_NAME="che"
+  CHE_SERVER_CONTAINER_NAME="che-server"
   CHE_SERVER_IMAGE_NAME="codenvy/che"
   CHE_LAUNCER_IMAGE_NAME="codenvy/che-launcher"
 
