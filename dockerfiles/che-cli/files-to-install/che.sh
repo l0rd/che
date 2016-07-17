@@ -14,7 +14,7 @@ init_logging() {
 
 init_global_variables() {
 
-  CHE_LAUNCHER_CONTAINER_NAME="cli"
+  CHE_LAUNCHER_CONTAINER_NAME="che-launcher"
   CHE_LAUNCHER_IMAGE_NAME="che-launcher"
 
   # User configurable variables
@@ -88,7 +88,7 @@ execute_che_launcher() {
   update_che_launcher
 
   info "ECLIPSE CHE: LAUNCHING LAUNCHER"
-  docker run -it --name "${CHE_LAUNCHER_CONTAINER_NAME}" \
+  docker run -it --rm --name "${CHE_LAUNCHER_CONTAINER_NAME}" \
     -v //var//run//docker.sock://var//run//docker.sock \
     "${CHE_LAUNCHER_IMAGE_NAME}":"${CHE_VERSION}" "${CHE_CLI_ACTION}" \
     # > /dev/null 2>&1

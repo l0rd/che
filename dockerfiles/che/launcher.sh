@@ -317,7 +317,7 @@ stop_che_server() {
     docker exec ${CHE_SERVER_CONTAINER_NAME} /home/user/che/bin/che.sh -c stop > /dev/null 2>&1
     sleep 5
     info "ECLIPSE CHE: REMOVING CONTAINER"
-    docker rm -f che > /dev/null 2>&1
+    docker rm -f ${CHE_SERVER_CONTAINER_NAME} > /dev/null 2>&1
     info "ECLIPSE CHE: STOPPED"
   fi
 }
