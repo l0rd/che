@@ -8,19 +8,14 @@
  * Contributors:
  *   Codenvy, S.A. - initial API and implementation
  *******************************************************************************/
-package org.eclipse.che.ide.ext.machine.server;
+package org.eclipse.che.ide.api.resources;
 
-import com.google.inject.AbstractModule;
-
-import org.eclipse.che.api.machine.server.MachineService;
-import org.eclipse.che.ide.ext.machine.server.ssh.KeysInjector;
-import org.eclipse.che.inject.DynaModule;
-
-@DynaModule
-public class MachineModule extends AbstractModule {
-    protected void configure() {
-        bind(KeysInjector.class).asEagerSingleton();
-
-        bind(RecipeScriptDownloadService.class);
-    }
+/**
+ * Indicates resource which allow renaming.
+ *
+ * @author Valeriy Svydenko
+ */
+public interface RenamingSupport {
+    /** Returns {@code} true if renaming is allowed otherwise {@code} false */
+    boolean isRenameAllowed(Resource resource);
 }
