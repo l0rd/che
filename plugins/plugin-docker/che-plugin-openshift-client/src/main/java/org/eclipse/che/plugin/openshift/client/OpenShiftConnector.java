@@ -169,6 +169,9 @@ public class OpenShiftConnector extends DockerConnector {
     private final String          cheWorkspaceStorage;
     private final String          cheWorkspaceProjectsStorage;
     private final String          cheServerExternalAddress;
+    private final String          cheWorkspaceCpuLimit;
+    private final String          cheWorkspaceCpuRequest;
+    private final String          cheWorkspaceMemoryRequest;
 
     @Inject
     public OpenShiftConnector(DockerConnectorConfiguration connectorConfiguration,
@@ -182,7 +185,10 @@ public class OpenShiftConnector extends DockerConnector {
                               @Named("che.openshift.workspaces.pvc.name") String workspacesPersistentVolumeClaim,
                               @Named("che.openshift.workspaces.pvc.quantity") String workspacesPvcQuantity,
                               @Named("che.workspace.storage") String cheWorkspaceStorage,
-                              @Named("che.workspace.projects.storage") String cheWorkspaceProjectsStorage) {
+                              @Named("che.workspace.projects.storage") String cheWorkspaceProjectsStorage,
+                              @Named("che.openshift.workspace.cpu.limit") String cheWorkspaceCpuLimit,
+                              @Named("che.openshift.workspace.cpu.request") String cheWorkspaceCpuRequest,
+                              @Named("che.openshift.workspace.memory.request") String cheWorkspaceMemoryRequest) {
 
         super(connectorConfiguration, connectionFactory, authResolver, dockerApiVersionPathPrefixProvider);
         this.cheServerExternalAddress = cheServerExternalAddress;
@@ -193,6 +199,9 @@ public class OpenShiftConnector extends DockerConnector {
         this.workspacesPvcQuantity = workspacesPvcQuantity;
         this.cheWorkspaceStorage = cheWorkspaceStorage;
         this.cheWorkspaceProjectsStorage = cheWorkspaceProjectsStorage;
+        this.cheWorkspaceCpuLimit = cheWorkspaceCpuLimit;
+        this.cheWorkspaceCpuRequest = cheWorkspaceCpuRequest;
+        this.cheWorkspaceMemoryRequest = cheWorkspaceMemoryRequest;
 
         this.openShiftClient = new DefaultOpenShiftClient();
     }
@@ -251,6 +260,15 @@ public class OpenShiftConnector extends DockerConnector {
         String[] volumes = createContainerParams.getContainerConfig().getHostConfig().getBinds();
 
         Map<String, String> additionalLabels = createContainerParams.getContainerConfig().getLabels();
+
+        long memoryLimitBytes = createContainerParams.getContainerConfig().getHostConfig().getMemory();
+        Map<String, Quantity> resourceLimits = new HashMap<>();
+        resourceLimits.put("memory", new Quantity(Long.toString(memoryLimitBytes)));
+        resourceLimits.put("cpu", new Quantity(cheWorkspaceCpuLimit));
+        Map<String, Quantity> resourceRequests = new HashMap<>();
+        resourceRequests.put("memory", new Quantity(cheWorkspaceMemoryRequest));
+        resourceRequests.put("cpu", new Quantity(cheWorkspaceCpuRequest));
+
         String containerID;
         try {
             createOpenShiftService(workspaceID, exposedPorts, additionalLabels);
@@ -259,7 +277,9 @@ public class OpenShiftConnector extends DockerConnector {
                                                               containerName,
                                                               exposedPorts,
                                                               envVariables,
-                                                              volumes);
+                                                              volumes,
+                                                              resourceLimits,
+                                                              resourceRequests);
 
             containerID = waitAndRetrieveContainerID(deploymentName);
             if (containerID == null) {
@@ -980,7 +1000,9 @@ public class OpenShiftConnector extends DockerConnector {
                                              String sanitizedContainerName,
                                              Set<String> exposedPorts,
                                              String[] envVariables,
-                                             String[] volumes) {
+                                             String[] volumes,
+                                             Map<String, Quantity> resourceLimits,
+                                             Map<String, Quantity> resourceRequests) {
 
         String deploymentName = CHE_OPENSHIFT_RESOURCES_PREFIX + workspaceID;
         LOG.info("Creating OpenShift deployment {}", deploymentName);
@@ -1008,7 +1030,9 @@ public class OpenShiftConnector extends DockerConnector {
                                                                       deploymentName,
                                                                       selector,
                                                                       command,
-                                                                      false);
+                                                                      false,
+                                                                      resourceLimits,
+                                                                      resourceRequests);
 
             try {
                 waitAndRetrieveContainerID(deploymentName);
@@ -1033,7 +1057,9 @@ public class OpenShiftConnector extends DockerConnector {
                                                        deploymentName,
                                                        selector,
                                                        null,
-                                                       true);
+                                                       true,
+                                                       resourceLimits,
+                                                       resourceRequests);
         LOG.info("OpenShift deployment {} created", deploymentName);
         return deployment.getMetadata().getName();
     }
@@ -1069,7 +1095,9 @@ public class OpenShiftConnector extends DockerConnector {
                                                          Map<String,
                                                          String> selector,
                                                          String[] command,
-                                                         boolean withSubpath) {
+                                                         boolean withSubpath,
+                                                         Map<String, Quantity> resourceLimits,
+                                                         Map<String, Quantity> resourceRequests) {
 
         Container container = new ContainerBuilder()
                                     .withName(sanitizedContainerName)
@@ -1083,6 +1111,10 @@ public class OpenShiftConnector extends DockerConnector {
                                     .withLivenessProbe(getLivenessProbeFrom(exposedPorts))
                                     .withCommand(command)
                                     .withVolumeMounts(getVolumeMountsFrom(volumes, workspaceID, withSubpath))
+                                    .withNewResources()
+                                        .withLimits(resourceLimits)
+                                        .withRequests(resourceRequests)
+                                    .endResources()
                                     .build();
 
         PodSpec podSpec = new PodSpecBuilder()
@@ -1186,7 +1218,8 @@ public class OpenShiftConnector extends DockerConnector {
         // HostConfig
         HostConfig hostConfig = new HostConfig();
         hostConfig.setBinds(new String[0]);
-        hostConfig.setMemory(imageInfo.getConfig().getMemory());
+        String memoryLimitBytes = container.getResources().getLimits().get("memory").getAmount();
+        hostConfig.setMemory(Long.parseLong(memoryLimitBytes));
 
         // Env vars
         List<String> imageEnv = Arrays.asList(imageContainerConfig.getEnv());
