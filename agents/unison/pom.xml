@@ -19,7 +19,6 @@
         <version>5.6.0-openshift-connector-SNAPSHOT</version>
     </parent>
     <artifactId>unison-agent</artifactId>
-    <version>5.6.0-openshift-connector-SNAPSHOT</version>
     <name>Unison Agent</name>
     <dependencies>
         <dependency>
