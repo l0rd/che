@@ -263,11 +263,14 @@ public class OpenShiftConnector extends DockerConnector {
 
         long memoryLimitBytes = createContainerParams.getContainerConfig().getHostConfig().getMemory();
         Map<String, Quantity> resourceLimits = new HashMap<>();
-        resourceLimits.put("memory", new Quantity(Long.toString(memoryLimitBytes)));
+        String cheWorkspaceMemoryLimit = Long.toString(memoryLimitBytes / 8388608) + "Mi";
+        LOG.info("Setting POD memory limit: {}", cheWorkspaceMemoryLimit);
+        resourceLimits.put("memory", new Quantity(cheWorkspaceMemoryLimit));
+        LOG.info("Setting POD cpu limit: {}", cheWorkspaceCpuLimit);
         resourceLimits.put("cpu", new Quantity(cheWorkspaceCpuLimit));
         Map<String, Quantity> resourceRequests = new HashMap<>();
-        resourceRequests.put("memory", new Quantity(cheWorkspaceMemoryRequest));
-        resourceRequests.put("cpu", new Quantity(cheWorkspaceCpuRequest));
+//        resourceRequests.put("memory", new Quantity(cheWorkspaceMemoryRequest));
+//        resourceRequests.put("cpu", new Quantity(cheWorkspaceCpuRequest));
 
         String containerID;
         try {
@@ -1021,6 +1024,7 @@ public class OpenShiftConnector extends DockerConnector {
             command = null;
         }
         if (command != null) {
+            LOG.info("OpenShift deployment {} will be deployed one first time (just to create folder {})", deploymentName, workspaceDir);
             Deployment deployment = createOpenShiftDeploymentInternal(workspaceID,
                                                                       imageName,
                                                                       sanitizedContainerName,
@@ -1046,6 +1050,12 @@ public class OpenShiftConnector extends DockerConnector {
                            .delete(deployment);
             if (!isDeleted(deploymentName)) {
                 LOG.warn("OpenShift deployment {} hasn't been deleted", deploymentName);
+            }
+            LOG.info("OpenShift deployment {} will be deployed one second (defintive) time", deploymentName);
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
         Deployment deployment = createOpenShiftDeploymentInternal(workspaceID,
@@ -1098,7 +1108,7 @@ public class OpenShiftConnector extends DockerConnector {
                                                          boolean withSubpath,
                                                          Map<String, Quantity> resourceLimits,
                                                          Map<String, Quantity> resourceRequests) {
-
+        LOG.info("Building Container object...");
         Container container = new ContainerBuilder()
                                     .withName(sanitizedContainerName)
                                     .withImage(imageName)
@@ -1117,11 +1127,13 @@ public class OpenShiftConnector extends DockerConnector {
                                     .endResources()
                                     .build();
 
+        LOG.info("Building PodSpec object...");
         PodSpec podSpec = new PodSpecBuilder()
                                  .withContainers(container)
                                  .withVolumes(getVolumesFrom(volumes, workspaceID))
                                  .build();
 
+        LOG.info("Building deployment...");
         Deployment deployment = new DeploymentBuilder()
                 .withNewMetadata()
                     .withName(deploymentName)
@@ -1129,6 +1141,9 @@ public class OpenShiftConnector extends DockerConnector {
                 .endMetadata()
                 .withNewSpec()
                     .withReplicas(1)
+                    .withNewStrategy()
+                        .withType("Recreate")
+                    .endStrategy()
                     .withNewSelector()
                         .withMatchLabels(selector)
                     .endSelector()
@@ -1141,10 +1156,12 @@ public class OpenShiftConnector extends DockerConnector {
                 .endSpec()
                 .build();
 
+        LOG.info("Creating deployment...");
         deployment = openShiftClient.extensions()
                                     .deployments()
                                     .inNamespace(this.openShiftCheProjectName)
                                     .create(deployment);
+        LOG.info("Done!");
         return deployment;
     }
 
@@ -1218,8 +1235,8 @@ public class OpenShiftConnector extends DockerConnector {
         // HostConfig
         HostConfig hostConfig = new HostConfig();
         hostConfig.setBinds(new String[0]);
-        String memoryLimitBytes = container.getResources().getLimits().get("memory").getAmount();
-        hostConfig.setMemory(Long.parseLong(memoryLimitBytes));
+        //String memoryLimitBytes = container.getResources().getLimits().get("memory").getAmount();
+        hostConfig.setMemory(imageInfo.getConfig().getMemory());
 
         // Env vars
         List<String> imageEnv = Arrays.asList(imageContainerConfig.getEnv());
@@ -1444,8 +1461,10 @@ public class OpenShiftConnector extends DockerConnector {
     }
 
     private String waitAndRetrieveContainerID(String deploymentName) throws IOException {
+        LOG.info("Waiting for pod to start...");
         for (int i = 0; i < OPENSHIFT_WAIT_POD_TIMEOUT; i++) {
             try {
+                LOG.info("Waiting...");
                 Thread.sleep(OPENSHIFT_WAIT_POD_DELAY);
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
@@ -1465,9 +1484,11 @@ public class OpenShiftConnector extends DockerConnector {
                                                            deploymentName));
             }
 
+
             Pod pod = pods.get(0);
             String status = pod.getStatus().getPhase();
             if (OPENSHIFT_POD_STATUS_RUNNING.equals(status)) {
+                LOG.info("Pod is running. Now injecting label with container identifier...");
                 String containerID = pod.getStatus().getContainerStatuses().get(0).getContainerID();
                 String normalizedID = KubernetesStringUtils.normalizeContainerID(containerID);
                 openShiftClient.pods()
@@ -1479,6 +1500,7 @@ public class OpenShiftConnector extends DockerConnector {
                                                 KubernetesStringUtils.getLabelFromContainerID(normalizedID))
                                .endMetadata()
                                .done();
+                LOG.info("Done!");
                 return normalizedID;
             }
         }
