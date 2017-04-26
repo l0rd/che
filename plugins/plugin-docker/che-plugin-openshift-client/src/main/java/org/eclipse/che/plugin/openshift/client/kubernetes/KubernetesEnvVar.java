@@ -13,6 +13,9 @@ package org.eclipse.che.plugin.openshift.client.kubernetes;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.fabric8.kubernetes.api.model.EnvVarSource;
+import io.fabric8.kubernetes.api.model.EnvVarSourceBuilder;
+import io.fabric8.kubernetes.api.model.SecretKeySelector;
 import org.eclipse.che.plugin.docker.client.json.ContainerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +30,15 @@ public final class KubernetesEnvVar {
     private static final Logger LOG = LoggerFactory.getLogger(KubernetesEnvVar.class);
 
     private KubernetesEnvVar() {
+    }
+
+    public static EnvVar getRecommenderApiToken() {
+        SecretKeySelector ks = new SecretKeySelector("fabric8-online-che", "recommender-api-token");
+        EnvVarSource envVarSource = new EnvVarSourceBuilder().withSecretKeyRef(ks).build();
+        EnvVar recommenderApiToken = new EnvVarBuilder()
+                .withName("RECOMMENDER_API_TOKEN")
+                .withValueFrom(envVarSource).build();
+        return recommenderApiToken;
     }
 
     /**
@@ -47,6 +59,8 @@ public final class KubernetesEnvVar {
             env.add(envVar);
             LOG.info("- {}={}",varName, varValue);
         }
+        LOG.info("Injecting RECOMMENDER_API_TOKEN");
+        env.add(getRecommenderApiToken());
         return env;
     }
 }
