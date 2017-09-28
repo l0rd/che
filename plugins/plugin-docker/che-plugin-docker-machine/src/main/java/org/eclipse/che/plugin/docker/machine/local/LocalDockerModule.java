@@ -26,6 +26,7 @@ import org.eclipse.che.plugin.docker.machine.DockerProcess;
 import org.eclipse.che.plugin.docker.machine.LocalDockerCustomServerEvaluationStrategy;
 import org.eclipse.che.plugin.docker.machine.ServerEvaluationStrategy;
 import org.eclipse.che.plugin.docker.machine.node.DockerNode;
+import org.eclipse.che.plugin.openshift.client.KubeConnector;
 import org.eclipse.che.plugin.openshift.client.OpenShiftConnector;
 
 /**
@@ -76,6 +77,7 @@ public class LocalDockerModule extends AbstractModule {
         MapBinder.newMapBinder(binder(), String.class, DockerConnector.class);
     dockerConnectors.addBinding("default").to(DockerConnector.class);
     dockerConnectors.addBinding("openshift").to(OpenShiftConnector.class);
+    dockerConnectors.addBinding("kubernetes").to(KubeConnector.class);
 
     Multibinder<String> devMachineEnvVars =
         Multibinder.newSetBinder(

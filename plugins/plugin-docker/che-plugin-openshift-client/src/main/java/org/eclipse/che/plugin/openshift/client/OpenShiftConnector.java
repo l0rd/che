@@ -73,6 +73,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -184,13 +185,13 @@ public class OpenShiftConnector extends DockerConnector {
   private static final int OPENSHIFT_WAIT_POD_DELAY = 1000;
   private static final int OPENSHIFT_IMAGESTREAM_WAIT_DELAY = 2000;
   private static final int OPENSHIFT_IMAGESTREAM_MAX_WAIT_COUNT = 30;
-  private static final long OPENSHIFT_POD_TERMINATION_GRACE_PERIOD = 0;
+  static final long OPENSHIFT_POD_TERMINATION_GRACE_PERIOD = 0;
 
   private static final String OPENSHIFT_POD_STATUS_RUNNING = "Running";
   private static final String OPENSHIFT_VOLUME_STORAGE_CLASS =
       "volume.beta.kubernetes.io/storage-class";
   private static final String OPENSHIFT_VOLUME_STORAGE_CLASS_NAME = "che-workspace";
-  private static final String OPENSHIFT_IMAGE_PULL_POLICY_IFNOTPRESENT = "IfNotPresent";
+  static final String OPENSHIFT_IMAGE_PULL_POLICY_IFNOTPRESENT = "IfNotPresent";
 
   private static final String IDLING_ALPHA_OPENSHIFT_IO_IDLED_AT =
       "idling.alpha.openshift.io/idled-at";
@@ -374,9 +375,16 @@ public class OpenShiftConnector extends DockerConnector {
 
     Set<String> containerExposedPorts = containerExposedPortsMap.keySet();
     Set<String> imageExposedPorts = imageExposedPortsMap.keySet();
+
+    /* vertx only */
+    Set<String> vertxPorts = new HashSet<>();
+    vertxPorts.add("8080/tcp");
+    vertxPorts.add("5005/tcp");
+
     return ImmutableSet.<String>builder()
         .addAll(containerExposedPorts)
         .addAll(imageExposedPorts)
+        .addAll(vertxPorts)
         .build();
   }
 
@@ -405,6 +413,15 @@ public class OpenShiftConnector extends DockerConnector {
     // Now merge all labels
     final Map<String, String> allLabels = new HashMap<>(containerLabels);
     allLabels.putAll(imageLabels);
+
+    /* vertx only */
+    Map<String, String> vertxLabels = new HashMap<>();
+    vertxLabels.put("che:server:8080:ref","vertx");
+    vertxLabels.put("che:server:8080:protocol","http");
+    vertxLabels.put("che:server:5005:ref","vertx-debug");
+    vertxLabels.put("che:server:5005:protocol","http");
+    allLabels.putAll(vertxLabels);
+
     return allLabels;
   }
 
@@ -1287,7 +1304,7 @@ public class OpenShiftConnector extends DockerConnector {
     }
   }
 
-  private Service getCheServiceBySelector(String selectorKey, String selectorValue) {
+  Service getCheServiceBySelector(String selectorKey, String selectorValue) {
     try (OpenShiftClient openShiftClient = new DefaultOpenShiftClient()) {
       ServiceList svcs =
           openShiftClient.services().inNamespace(this.openShiftCheProjectName).list();
@@ -1307,7 +1324,7 @@ public class OpenShiftConnector extends DockerConnector {
     }
   }
 
-  private Pod getChePodByContainerId(String containerId) throws IOException {
+  Pod getChePodByContainerId(String containerId) throws IOException {
     try (OpenShiftClient openShiftClient = new DefaultOpenShiftClient()) {
       PodList pods =
           openShiftClient
@@ -1398,7 +1415,7 @@ public class OpenShiftConnector extends DockerConnector {
     return workspaceID.replaceFirst("workspace", "");
   }
 
-  private boolean isDevMachine(CreateContainerParams createContainerParams) {
+  boolean isDevMachine(CreateContainerParams createContainerParams) {
     Stream<String> env = Arrays.stream(createContainerParams.getContainerConfig().getEnv());
     return Boolean.parseBoolean(
         env.filter(v -> v.startsWith(CHE_IS_DEV_MACHINE_ENV_VAR) && v.contains("="))
@@ -1665,7 +1682,7 @@ public class OpenShiftConnector extends DockerConnector {
     return info;
   }
 
-  private List<ContainerState> getContainerStates(final Pod pod) throws OpenShiftException {
+  List<ContainerState> getContainerStates(final Pod pod) throws OpenShiftException {
     List<ContainerState> containerStates = new ArrayList<>();
     List<ContainerStatus> containerStatuses = pod.getStatus().getContainerStatuses();
     for (ContainerStatus status : containerStatuses) {
@@ -1743,7 +1760,7 @@ public class OpenShiftConnector extends DockerConnector {
     return workspaceSubpath;
   }
 
-  private List<VolumeMount> getVolumeMountsFrom(String[] volumes) {
+  List<VolumeMount> getVolumeMountsFrom(String[] volumes) {
     List<VolumeMount> vms = new ArrayList<>();
     PersistentVolumeClaim pvc = getClaimCheWorkspace();
     if (pvc != null) {
@@ -1771,7 +1788,7 @@ public class OpenShiftConnector extends DockerConnector {
     return vms;
   }
 
-  private List<Volume> getVolumesFrom(String[] volumes) {
+  List<Volume> getVolumesFrom(String[] volumes) {
     List<Volume> vs = new ArrayList<>();
     PersistentVolumeClaim pvc = getClaimCheWorkspace();
     if (pvc != null) {
@@ -1828,7 +1845,7 @@ public class OpenShiftConnector extends DockerConnector {
     }
   }
 
-  private String waitAndRetrieveContainerID(String deploymentName) throws IOException {
+  String waitAndRetrieveContainerID(String deploymentName) throws IOException {
     try (OpenShiftClient openShiftClient = new DefaultOpenShiftClient()) {
       for (int i = 0; i < OPENSHIFT_WAIT_POD_TIMEOUT; i++) {
         try {
@@ -1886,7 +1903,7 @@ public class OpenShiftConnector extends DockerConnector {
    *     "https://docs.openshift.com/enterprise/3.0/dev_guide/application_health.html">OpenShift
    *     Application Health</a>
    */
-  private Probe getLivenessProbeFrom(final Set<String> exposedPorts) {
+  Probe getLivenessProbeFrom(final Set<String> exposedPorts) {
     int port = 0;
 
     if (isDevMachine(exposedPorts)) {
@@ -1908,7 +1925,7 @@ public class OpenShiftConnector extends DockerConnector {
     return null;
   }
 
-  private Map<String, List<PortBinding>> getCheServicePorts(Service service) {
+  Map<String, List<PortBinding>> getCheServicePorts(Service service) {
     Map<String, List<PortBinding>> networkSettingsPorts = new HashMap<>();
     List<ServicePort> servicePorts = service.getSpec().getPorts();
     LOG.info(

@@ -75,7 +75,7 @@ public class OpenShiftDeploymentCleaner {
     }
   }
 
-  private void waitUntilWorkspacePodIsDeleted(final String deploymentName, final String namespace)
+  void waitUntilWorkspacePodIsDeleted(final String deploymentName, final String namespace)
       throws OpenShiftException {
     try (OpenShiftClient client = new DefaultOpenShiftClient()) {
       for (int waitCount = 0; waitCount < OPENSHIFT_POD_DELETION_TIMEOUT; waitCount++) {
