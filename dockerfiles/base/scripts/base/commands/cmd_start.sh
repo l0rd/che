@@ -71,7 +71,7 @@ cmd_start() {
   # If already running, just display output again
   check_if_booted
 
-  if server_is_booted $(get_server_container_id $CHE_CONTAINER_NAME); then 
+  if server_is_booted; then
     return 1
   fi
 
@@ -111,7 +111,7 @@ cmd_start() {
 
   wait_until_booted
 
-  if ! server_is_booted $(get_server_container_id $CHE_CONTAINER_NAME); then 
+  if ! server_is_booted; then
     error "(${CHE_MINI_PRODUCT_NAME} start): Timeout waiting for server. Run \"docker logs ${CHE_CONTAINER_NAME}\" to inspect."
     return 2
   fi
@@ -246,7 +246,7 @@ wait_until_booted() {
   fi
 
   check_containers_are_running
-  wait_until_server_is_booted 60 ${CURRENT_CHE_SERVER_CONTAINER_ID}
+  wait_until_server_is_booted 60
   check_containers_are_running
 
   if debug_server; then
@@ -258,7 +258,7 @@ wait_until_booted() {
 check_if_booted() {
   if container_exist_by_name $CHE_CONTAINER_NAME; then
     local CURRENT_CHE_SERVER_CONTAINER_ID=$(get_server_container_id $CHE_CONTAINER_NAME)
-    if server_is_booted $CURRENT_CHE_SERVER_CONTAINER_ID; then 
+    if server_is_booted; then
       DISPLAY_URL=$(get_display_url)
       info "start" "Booted and reachable"
       info "start" "Ver: $(get_installed_version)"

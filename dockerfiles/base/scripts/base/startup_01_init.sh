@@ -83,6 +83,10 @@ init_global_vars() {
   DEFAULT_CHE_PRODUCT_NAME="CHE"
   CHE_PRODUCT_NAME=${CHE_PRODUCT_NAME:-${DEFAULT_CHE_PRODUCT_NAME}}
 
+  # docker, openshift or kubernetes
+  DEFAULT_CHE_INFRASTRUCTURE="docker"
+  CHE_INFRASTRUCTURE=${CHE_INFRASTRUCTURE:-${DEFAULT_CHE_INFRASTRUCTURE}}
+
   # Name used in CLI statements
   DEFAULT_CHE_MINI_PRODUCT_NAME="che"
   CHE_MINI_PRODUCT_NAME=${CHE_MINI_PRODUCT_NAME:-${DEFAULT_CHE_MINI_PRODUCT_NAME}}
@@ -134,6 +138,8 @@ init_global_vars() {
   CHE_ENVIRONMENT_FILE="${CHE_MINI_PRODUCT_NAME}.env"
   CHE_COMPOSE_FILE="docker-compose-container.yml"
   CHE_HOST_COMPOSE_FILE="docker-compose.yml"
+  CHE_OPENSHIFT_FILE="che-openshift.yml"
+  CHE_KUBERNETES_FILE="che-kubernetes.yml"
 
   # Keep for backwards compatibility
   DEFAULT_CHE_SERVER_CONTAINER_NAME="${CHE_MINI_PRODUCT_NAME}"
@@ -144,6 +150,9 @@ init_global_vars() {
 
   DEFAULT_CHE_CONTAINER_PREFIX="${CHE_SERVER_CONTAINER_NAME}"
   CHE_CONTAINER_PREFIX="${CHE_CONTAINER_PREFIX:-${DEFAULT_CHE_CONTAINER_PREFIX}}"
+
+  DEFAULT_CHE_DEPLOYMENT_CONFIG_NAME="${CHE_SERVER_CONTAINER_NAME}"
+  CHE_DEPLOYMENT_CONFIG_NAME="${CHE_DEPLOYMENT_CONFIG_NAME:-${DEFAULT_CHE_DEPLOYMENT_CONFIG_NAME}}"
 
   CHE_BACKUP_FILE_NAME="${CHE_MINI_PRODUCT_NAME}_backup.tar.gz"
   CHE_COMPOSE_STOP_TIMEOUT="180"
@@ -275,7 +284,7 @@ start() {
   source "${CHE_BASE_SCRIPTS_CONTAINER_SOURCE_DIR}"/startup_02_pre_docker.sh
 
   # Make sure Docker is working and we have /var/run/docker.sock mounted or valid DOCKER_HOST
-  init_check_docker "$@"
+  init_check_infrastructure "$@"
 
   # Check to see if Docker is configured with a proxy and pull values
   init_check_docker_networking

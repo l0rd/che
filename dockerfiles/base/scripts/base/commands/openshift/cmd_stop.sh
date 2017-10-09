@@ -39,7 +39,7 @@ cmd_stop() {
     FORCE_STOP=true
   fi
 
-  if server_is_booted $(get_server_container_id $CHE_CONTAINER_NAME); then 
+  if server_is_booted; then
     if [[ ${FORCE_STOP} = "false" ]]; then
       info "stop" "Stopping workspaces..."
       local GRACEFUL_STATUS_RESULT=0

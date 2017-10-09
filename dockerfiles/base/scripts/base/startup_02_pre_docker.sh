@@ -272,6 +272,14 @@ cli_init() {
   fi
 }
 
+init_check_infrastructure() {
+  init_check_docker "$@"
+  if [[ "$CHE_INFRASTRUCTURE" = "kubernetes" ]] ||
+      [[  "$CHE_INFRASTRUCTURE" = "openshift" ]]; then
+    init_check_kubernetes "$@"
+  fi
+}
+
 init_check_docker() {
   if ! has_docker; then
     error "Docker not found. Get it at https://docs.docker.com/engine/installation/."
@@ -326,6 +334,75 @@ init_check_docker() {
   fi
 
   CHE_VERSION=$CHE_IMAGE_VERSION
+}
+
+init_check_kubernetes() {
+  if ! has_oc; then
+    error "oc not found. Get it at https://docs.openshift.org/latest/cli_reference/get_started_cli.html."
+    return 1;
+  fi
+
+  # KUBERNETES_ENDPOINT should be set
+  if [ -z "${KUBERNETES_ENDPOINT+x}" ]; then
+    info "Welcome to ${CHE_FORMAL_PRODUCT_NAME}!"
+    info ""
+    info "You are missing a mandatory parameter:"
+    info "   Set KUBERNETES_ENDPOINT to Kubernetes URL."
+    info ""
+    info "KUBERNETES_ENDPOINT Syntax:"
+    info "   Start with 'docker run -it --rm -e KUBERNETES_ENDPOINT=<kubernetes-location> ...'"
+    return 2;
+  fi
+
+  # KUBERNETES_TOKEN or KUBERNETES_USERNAME/KUBERNETES_PASSWORD should be set
+  if ([ -z "${KUBERNETES_USERNAME+x}" ] ||
+    [ -z "${KUBERNETES_PASSWORD+x}" ]) &&
+    [ -z "${KUBERNETES_TOKEN+x}" ]; then
+    info "Welcome to ${CHE_FORMAL_PRODUCT_NAME}!"
+    info ""
+    info "You are missing a mandatory parameter to access the Kubernetes API:"
+    info "   1. Set KUBERNETES_USERNAME and KUBERNETES_PASSWORD."
+    info "   2. Or, set KUBERNETES_TOKEN."
+    info ""
+    info ""
+    info "KUBERNETES_USERNAME and KUBERNETES_PASSWORD Syntax:"
+    info "   Start with 'docker run -it --rm -e KUBERNETES_USERNAME=<kubernetes-username>  -e KUBERNETES_PASSWORD=<kubernetes-password> ...'"
+    info ""
+    info "KUBERNETES_TOKEN Syntax:"
+    info "   Start with 'docker run -it --rm -e KUBERNETES_TOKEN=<kubernetes-token> ...'"
+    return 2;
+  fi
+
+  if [ -z "${KUBERNETES_TOKEN+x}" ]; then
+    if ! oc login "${KUBERNETES_ENDPOINT}" --insecure-skip-tls-verify="${OC_SKIP_TLS}" -u "${KUBERNETES_USERNAME}" -p "${KUBERNETES_PASSWORD}" > /dev/null 2>&1; then
+      info "Welcome to ${CHE_FORMAL_PRODUCT_NAME}!"
+      info ""
+      info "Login to Kubernetes failed. Possible root causes:"
+      info "   1. The URL to Kubernetes is wrong (current value is ${KUBERNETES_ENDPOINT})."
+      info "   2. Login and password provided are wrong."
+      info ""
+      info "Try to login manually.:"
+      info "   oc login \${KUBERNETES_ENDPOINT} -u \${KUBERNETES_USERNAME} -p \${KUBERNETES_PASSWORD}."
+    else
+      KUBERNETES_TOKEN=$(oc whoami -t)
+    fi
+  else
+    if ! oc login "${KUBERNETES_ENDPOINT}" --insecure-skip-tls-verify="${OC_SKIP_TLS}" --token="${KUBERNETES_TOKEN}" > /dev/null 2>&1; then
+      info "Welcome to ${CHE_FORMAL_PRODUCT_NAME}!"
+      info ""
+      info "Login to Kubernetes failed. Possible root causes:"
+      info "   1. The URL to Kubernetes is wrong (current value is ${KUBERNETES_ENDPOINT})."
+      info "   2. Kubernetes token is not valid."
+      info ""
+      info "Try to login manually.:"
+      info "   oc login \${KUBERNETES_ENDPOINT} --token=\${KUBERNETES_TOKEN}."
+    fi
+  fi
+
+  OC_VERSION=$(oc version | grep oc | cut -d ' ' -f2 -s)
+  OPENSHIFT_SERVER_VERSION=$(oc version | grep openshift | cut -d ' ' -f2 -s)
+  # TODO get only the last line for kubernetes
+  KUBERNETES_SERVER_VERSION=$(oc version | grep kubernetes | cut -d ' ' -f2 -s)
 }
 
 init_check_docker_networking() {
@@ -467,6 +544,7 @@ init_check_mounts() {
   REFERENCE_CONTAINER_ENVIRONMENT_FILE="${CHE_CONTAINER_CONFIG}/${CHE_ENVIRONMENT_FILE}"
   REFERENCE_CONTAINER_COMPOSE_FILE="${CHE_CONTAINER_INSTANCE}/${CHE_COMPOSE_FILE}"
   REFERENCE_CONTAINER_COMPOSE_HOST_FILE="${CHE_CONTAINER_INSTANCE}/${CHE_HOST_COMPOSE_FILE}"
+  REFERENCE_OPENSHIFT_FILE="${CHE_CONTAINER_INSTANCE}/${CHE_OPENSHIFT_FILE}"
 
   CHE_CONTAINER_OFFLINE_FOLDER="${CHE_CONTAINER_BACKUP}"
   CHE_HOST_OFFLINE_FOLDER="${CHE_HOST_BACKUP}"
@@ -602,6 +680,10 @@ init_scripts() {
 
 has_docker() {
   hash docker 2>/dev/null && return 0 || return 1
+}
+
+has_oc() {
+  hash oc 2>/dev/null && return 0 || return 1
 }
 
 get_container_folder() {

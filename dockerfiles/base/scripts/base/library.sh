@@ -34,7 +34,7 @@ get_display_url() {
   # and not use the in-memory one which is always set with eclipse/che-ip.
   local CHE_HOST_LOCAL=$${CHE_PRODUCT_NAME}_HOST
 
-  if is_initialized; then 
+  if is_initialized; then
     CHE_HOST_LOCAL=$(get_value_of_var_from_env_file ${CHE_PRODUCT_NAME}_HOST)
   fi
 
@@ -144,7 +144,7 @@ wait_until_server_is_booted() {
   SERVER_BOOT_TIMEOUT=${1}
 
   ELAPSED=0
-  until server_is_booted ${2} || [ ${ELAPSED} -eq "${SERVER_BOOT_TIMEOUT}" ]; do
+  until server_is_booted || [ ${ELAPSED} -eq "${SERVER_BOOT_TIMEOUT}" ]; do
     log "sleep 2"
     sleep 2
     server_is_booted_extra_check
