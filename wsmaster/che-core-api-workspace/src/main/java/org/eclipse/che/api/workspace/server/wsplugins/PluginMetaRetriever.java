@@ -145,7 +145,20 @@ public class PluginMetaRetriever {
       URI repo = null;
       String idVersionString;
       final int idVersionTagDelimiter = plugin.lastIndexOf("/");
+      if (idVersionTagDelimiter == -1) {
+        throw new InfrastructureException(
+            "Plugin format is illegal. Missing slash delimiting the organization part:" + plugin);
+      }
+
       idVersionString = plugin.substring(idVersionTagDelimiter + 1);
+      idVersionString = plugin.substring(idVersionTagDelimiter + 1);
+
+      <repository>/<organization>/<id>:<version> => USE a REGEXP and UnitTest it
+      che.openshift.io/plugins/apple/iche:1.4.2
+      https://che.openshift.io/plugins/apple/iche:1.4.2
+      https://che.openshift.io:8080/plugins/apple/iche:1.4.2
+      
+
       if (idVersionTagDelimiter > -1) {
         try {
           repo = new URI(plugin.substring(0, idVersionTagDelimiter));
@@ -183,6 +196,7 @@ public class PluginMetaRetriever {
   }
 
   private PluginMeta getMeta(PluginFQN pluginFQN) throws InfrastructureException {
+    final String organization = pluginFQN.getOrganization();
     final String id = pluginFQN.getId();
     final String version = pluginFQN.getVersion();
     try {
@@ -191,9 +205,9 @@ public class PluginMetaRetriever {
               ? pluginRegistry.clone()
               : UriBuilder.fromUri(pluginFQN.getRegistry());
 
-      URI metaURI = metaURIBuilder.path(id).path(version).path("meta.yaml").build();
+      URI metaURI = metaURIBuilder.path(organization).path(id).path(version).path("meta.yaml").build();
       PluginMeta meta = getBody(metaURI, PluginMeta.class);
-      validateMeta(meta, id, version);
+      validateMeta(meta, organization, id, version);
       return meta;
     } catch (IllegalArgumentException | UriBuilderException | MalformedURLException e) {
       throw new InternalInfrastructureException(
@@ -209,23 +223,23 @@ public class PluginMetaRetriever {
   }
 
   @VisibleForTesting
-  void validateMeta(PluginMeta meta, String id, String version) throws InfrastructureException {
-    requireNotNullNorEmpty(meta.getId(), CHE_PLUGIN_OBJECT_ERROR, id, version, "ID is missing.");
+  void validateMeta(PluginMeta meta, String organization, String id, String version) throws InfrastructureException {
+    requireNotNullNorEmpty(meta.getId(), CHE_PLUGIN_OBJECT_ERROR, organization, id, version, "ID is missing.");
     requireEqual(
         id,
         meta.getId(),
         "Plugin id in attribute doesn't match plugin metadata. Plugin object seems broken.");
     requireNotNullNorEmpty(
-        meta.getVersion(), CHE_PLUGIN_OBJECT_ERROR, id, version, "Version is missing.");
+        meta.getVersion(), CHE_PLUGIN_OBJECT_ERROR, organization, id, version, "Version is missing.");
     requireEqual(
         version,
         meta.getVersion(),
         "Plugin version in workspace config attributes doesn't match plugin metadata. Plugin object seems broken.");
     requireNotNullNorEmpty(
-        meta.getName(), CHE_PLUGIN_OBJECT_ERROR, id, version, "Name is missing.");
+        meta.getName(), CHE_PLUGIN_OBJECT_ERROR, organization, id, version, "Name is missing.");
     requireNotNullNorEmpty(
-        meta.getType(), CHE_PLUGIN_OBJECT_ERROR, id, version, "Type is missing.");
-    requireNotNullNorEmpty(meta.getUrl(), CHE_PLUGIN_OBJECT_ERROR, id, version, "URL is missing.");
+        meta.getType(), CHE_PLUGIN_OBJECT_ERROR, organization, id, version, "Type is missing.");
+    requireNotNullNorEmpty(meta.getUrl(), CHE_PLUGIN_OBJECT_ERROR, organization, id, version, "URL is missing.");
   }
 
   @VisibleForTesting

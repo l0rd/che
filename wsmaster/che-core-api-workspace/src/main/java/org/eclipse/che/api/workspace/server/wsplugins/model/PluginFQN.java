@@ -21,11 +21,13 @@ import java.net.URI;
 public class PluginFQN {
 
   private URI registry;
+  private String organization;
   private String id;
   private String version;
 
-  public PluginFQN(URI registry, String id, String version) {
+  public PluginFQN(URI registry, String organization, String id, String version) {
     this.registry = registry;
+    this.organization = organization;
     this.id = id;
     this.version = version;
   }
@@ -36,6 +38,14 @@ public class PluginFQN {
 
   public void setRegistry(URI registry) {
     this.registry = registry;
+  }
+
+  public String getOrganization() {
+    return organization;
+  }
+
+  public void setOrganization(String organization) {
+    this.organization = organization;
   }
 
   public String getId() {

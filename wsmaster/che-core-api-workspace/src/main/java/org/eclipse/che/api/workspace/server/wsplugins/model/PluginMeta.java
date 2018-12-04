@@ -14,6 +14,7 @@ package org.eclipse.che.api.workspace.server.wsplugins.model;
 /** @author Oleksandr Garagatyi */
 public class PluginMeta {
   private String name = null;
+  private String organization = null;
   private String id = null;
   private String type = null;
   private String version = null;
@@ -29,6 +30,15 @@ public class PluginMeta {
 
   public String getName() {
     return name;
+  }
+
+  public PluginMeta organization(String organization) {
+    this.organization = organization;
+    return this;
+  }
+
+  public String getOrganization() {
+    return organization;
   }
 
   public PluginMeta id(String id) {
